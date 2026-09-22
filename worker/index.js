@@ -473,6 +473,110 @@ async function handleBattles(request, env, ctx, tag) {
   });
 }
 
+const CREATORS = [
+  { id: "spenlc", name: "SpenLC", handle: "@spenlc", channelId: "UCsuS8BRN4y6_QoBvAqTtSSg" },
+  { id: "ash", name: "Ash", handle: "@ashbrawlstars", channelId: "UC874WmmCVtIwTG4gQbWHKUQ" },
+  { id: "kairos", name: "KairosTime", handle: "@kairosgaming", channelId: "UCmG2EhfOwSjpPMX4LjGY__A" },
+  { id: "cryingman", name: "CryingMan", handle: "@cryingman", channelId: "UCGShu88Lh2ZAtXX0qbV9fXA" },
+];
+const CREATORS_TTL_SECONDS = 1800;
+const RECENT_KEPT = 3;
+const TIER_LIST_WINDOW_MS = 7 * 24 * 60 * 60 * 1000;
+
+/** Tier-list and meta uploads, recognised by title. A live stream is never one. */
+export function classifyCreatorTitle(title) {
+  const t = String(title ?? "").toLowerCase();
+  if (/\blive\b/.test(t) || /stream ends/.test(t)) return { score: 0, kind: null };
+  if (/tier list/.test(t) && /rank(ing|s)? all|worst to best|pro tier/.test(t)) return { score: 100, kind: "tier list" };
+  if (/pro tier list|best & worst/.test(t)) return { score: 95, kind: "tier list" };
+  if (/tier list/.test(t)) return { score: 90, kind: "tier list" };
+  if (/ranking all|ranks all/.test(t)) return { score: 85, kind: "tier list" };
+  if (/explaining new meta|new meta/.test(t)) return { score: 70, kind: "meta" };
+  if (/top 10 best brawlers|best 15 brawlers|must max brawlers/.test(t)) return { score: 55, kind: "top picks" };
+  return { score: 0, kind: null };
+}
+
+/** A YouTube Atom feed's entries, newest first, with what the screen shows. */
+export function parseCreatorFeed(xml) {
+  const decode = (value) =>
+    String(value ?? "")
+      .replace(/<!\[CDATA\[([\s\S]*?)\]\]>/g, "$1")
+      .replace(/&lt;/g, "<")
+      .replace(/&gt;/g, ">")
+      .replace(/&quot;/g, '"')
+      .replace(/&#39;/g, "'")
+      .replace(/&amp;/g, "&")
+      .trim();
+  const tag = (block, name) => {
+    const match = new RegExp(`<${name}[^>]*>([\\s\\S]*?)</${name}>`, "i").exec(block);
+    return match ? decode(match[1]) : "";
+  };
+  const entries = [];
+  for (const chunk of String(xml ?? "").match(/<entry\b[\s\S]*?<\/entry>/gi) ?? []) {
+    const videoId = tag(chunk, "yt:videoId");
+    const title = tag(chunk, "title");
+    const publishedAt = tag(chunk, "published");
+    if (!videoId || !title || !publishedAt) continue;
+    entries.push({
+      videoId,
+      title,
+      publishedAt,
+      watchUrl: `https://www.youtube.com/watch?v=${videoId}`,
+      thumbnailUrl: `https://i.ytimg.com/vi/${videoId}/mqdefault.jpg`,
+      kind: classifyCreatorTitle(title).kind,
+    });
+  }
+  return entries.sort((a, b) => Date.parse(b.publishedAt) - Date.parse(a.publishedAt));
+}
+
+async function creatorFeed(channelId) {
+  const res = await fetch(`https://www.youtube.com/feeds/videos.xml?channel_id=${channelId}`, {
+    headers: { accept: "application/atom+xml, application/xml, text/xml", "user-agent": "n3x-club-companion" },
+  });
+  if (!res.ok) throw new Error(`feed ${res.status}`);
+  return parseCreatorFeed(await res.text());
+}
+
+/**
+ * What the creators are saying, straight from their public feeds: the newest
+ * tier list within a week (or the newest tier-list-ish upload), plus a few
+ * recent ones. Titles and dates only — placements inside a video are never
+ * transcribed, because the app cannot see them.
+ */
+async function handleCreators(request, env, ctx) {
+  return cached(request, ctx, CREATORS_TTL_SECONDS, async () => {
+    const creators = await Promise.all(
+      CREATORS.map(async (creator) => {
+        const base = {
+          id: creator.id,
+          name: creator.name,
+          handle: creator.handle,
+          channelUrl: `https://www.youtube.com/channel/${creator.channelId}`,
+        };
+        try {
+          const entries = await creatorFeed(creator.channelId);
+          const classified = entries.filter((entry) => entry.kind);
+          const newest = classified[0] ?? null;
+          const newestAt = newest ? Date.parse(newest.publishedAt) : 0;
+          const recentTierList = classified.find(
+            (entry) => entry.kind === "tier list" && newestAt - Date.parse(entry.publishedAt) <= TIER_LIST_WINDOW_MS,
+          );
+          const list = recentTierList ?? newest;
+          return {
+            ...base,
+            latest: entries[0] ?? null,
+            list,
+            recent: classified.filter((entry) => entry !== list).slice(0, RECENT_KEPT),
+          };
+        } catch (err) {
+          return { ...base, latest: null, list: null, recent: [], error: String(err?.message ?? err) };
+        }
+      }),
+    );
+    return json({ updatedAt: Date.now(), source: "YouTube RSS", creators });
+  });
+}
+
 async function handleMaps(request, env, ctx) {
   return cached(request, ctx, META_TTL_SECONDS, async () => {
     try {
@@ -504,6 +608,7 @@ export default {
       });
     }
     if (path === "/club") return handleClub(request, env, ctx);
+    if (path === "/creators") return handleCreators(request, env, ctx);
     if (path === "/ladder") return handleLadder(request, env, ctx);
     if (path === "/maps") return handleMaps(request, env, ctx);
 

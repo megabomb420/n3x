@@ -40,6 +40,15 @@ First live numbers (2026-09-22, club of 28): 437 competitive battles in the memb
 
 What it is not: a global tier list. Every row carries its own sample size, and the screen says so. A battle the API published no trophy change for is excluded from that column rather than counted as a zero — a row where none carried one reads as a dash; the client cache keys carry a version so an older stored shape is never re-read.
 
+### 2026-09-22 (later still): the tab split — Stats for the club, Meta for the creators
+
+The owner meant the *game's* meta by "Meta", so the club numbers moved to **Stats** and **Meta** is now the creator board:
+
+- `GET /creators` reads the public YouTube feeds of SpenLC, Ash, KairosTime and CryingMan (four subrequests, edge-cached for 30 minutes), classifies the titles (the tier-list heuristic the previous app used: live streams never count, a full ranking outranks a vague tier list) and answers with each channel's chosen tier list, its newest upload and a few recent ones. A feed that fails is reported per creator instead of being dropped.
+- The Meta screen shows those uploads with thumbnails, kind badges and dates, plus chips for brawlers named in the titles (matched against the BrawlAPI catalog). **Placements inside a video are never transcribed** — the app cannot see them.
+- Naming: `src/components/stats-screen.tsx` + `src/routes/stats.tsx` + `src/lib/club/stats.ts` (pure arithmetic) and `src/lib/club/stats-loader.ts`; the creator board lives in `src/lib/meta/creators.ts` + `src/components/meta-screen.tsx`. Navigation is five tabs, `/stats` and `/meta` are both prerendered, and `Stats` never claims to be global.
+- Tests grew to ten in `scripts/worker-mapping.test.mjs` (creator title classification and feed parsing among them) plus the club-stats arithmetic tests.
+
 ### 2026-09-22 (late): live on the official API
 
 `BRAWL_API_KEY` is set on the Worker — the owner's key, whose `cidrs` limit it to RoyaleAPI's proxy address. Verified against the live Worker and both hosts:

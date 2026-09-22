@@ -186,7 +186,14 @@ export default defineConfig(({ command, isPreview }) => ({
       // client (the queries run after hydration). Member pages are reached
       // through each host's 404 fallback.
       prerender: { enabled: true },
-      pages: [{ path: "/" }, { path: "/meta" }, { path: "/ladder" }, { path: "/maps" }, { path: "/about" }],
+      pages: [
+        { path: "/" },
+        { path: "/stats" },
+        { path: "/meta" },
+        { path: "/ladder" },
+        { path: "/maps" },
+        { path: "/about" },
+      ],
     }),
     ...(command === "build" || isPreview
       ? [

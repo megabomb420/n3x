@@ -6,13 +6,13 @@
  * costs nothing. The arithmetic lives in `club-stats.ts`.
  */
 import { apiGet } from "@/lib/api/client";
-import { loadClubHome } from "@/lib/club/queries";
-import type { PlayerBattle } from "@/lib/club/types";
-import { aggregateBattles, type ClubMeta, type MetaQueue } from "./club-stats";
-import { cacheGet, cacheSet } from "./cache";
+import { cacheGet, cacheSet } from "@/lib/meta/cache";
+import { loadClubHome } from "./queries";
+import { aggregateBattles, type ClubMeta, type MetaQueue } from "./stats";
+import type { PlayerBattle } from "./types";
 
-export { LOW_SAMPLE, aggregateBattles } from "./club-stats";
-export type { ClubMeta, MetaQueue, MetaRow } from "./club-stats";
+export { LOW_SAMPLE, aggregateBattles } from "./stats";
+export type { ClubMeta, MetaQueue, MetaRow } from "./stats";
 
 const LOG_TTL_MS = 5 * 60_000;
 const META_TTL_MS = 10 * 60_000;
@@ -40,8 +40,8 @@ async function loadMemberBattles(tag: string): Promise<PlayerBattle[]> {
   }
 }
 
-/** The club's meta for one queue, cached on the device for ten minutes. */
-export async function loadClubMeta(queue: MetaQueue): Promise<ClubMeta & { unavailable: number; fetchedAt: number }> {
+/** The club's stats for one queue, cached on the device for ten minutes. */
+export async function loadClubStats(queue: MetaQueue): Promise<ClubMeta & { unavailable: number; fetchedAt: number }> {
   const cacheKey = `club-meta:${CACHE_TAG}:${queue}`;
   const hit = cacheGet<ClubMeta & { unavailable: number; fetchedAt: number }>(cacheKey);
   if (hit && Date.now() - hit.savedAt < META_TTL_MS) return hit.value;

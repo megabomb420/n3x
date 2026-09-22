@@ -17,8 +17,9 @@ function AboutPage() {
           <p className="mt-2">
             This is an unofficial companion for Brawl Stars club <span className="text-fg">'N3X</span> (
             <span className="text-fg">#2JYGUQ2P8</span>). Club is the home tab: live roster, member
-            profiles and who joined or left. Ladder shows the official global leaderboards, Maps the
-            live event rotation.
+            profiles and who joined or left. Stats counts the club's own battles, Meta collects what
+            the creators publish, Ladder shows the official global leaderboards and Maps the live
+            event rotation.
           </p>
         </section>
 
@@ -76,7 +77,7 @@ function AboutPage() {
         </section>
 
         <section>
-          <h3 className="font-medium text-fg">Ladder and Maps</h3>
+          <h3 className="font-medium text-fg">Ladder, Maps, Stats and Meta</h3>
           <ul className="mt-2 list-disc space-y-1 pl-5">
             <li>
               <span className="text-fg">Ladder:</span> the official global leaderboards — the top 200
@@ -87,6 +88,20 @@ function AboutPage() {
               <span className="text-fg">Maps:</span> the live event rotation — what is running now and
               what comes next, with mode and map names. Counts of games per map are not published by
               the API, so the app does not show any.
+            </li>
+            <li>
+              <span className="text-fg">Stats:</span> what this club actually played and won with,
+              counted from the members' own battle logs (about the last 25 games each, competitive
+              queues only — friendlies and event modes stay out). The official API publishes no global
+              win or pick rates, so these are club numbers: every row carries its own sample size, and
+              fewer than five games reads as a small sample instead of a ranking. A dash in the
+              right-hand column means the API published no trophy or Elo change for those battles.
+            </li>
+            <li>
+              <span className="text-fg">Meta:</span> the newest tier-list and meta uploads from SpenLC,
+              Ash, KairosTime and CryingMan, read from their public YouTube feeds. Titles and dates
+              only — placements inside a video are not transcribed, and the app does not guess them
+              from a thumbnail. Brawlers named in a title appear as chips so a list reads at a glance.
             </li>
             <li>
               <span className="text-fg">Brawler and map art:</span>{" "}
@@ -126,7 +141,12 @@ function AboutPage() {
             <li>
               Ranked win-rate and pick-rate boards (per map, per brawler, filtered by league) existed
               only in Brawl Time Ninja's analytics cube and have no official equivalent — they are not
-              part of this app rather than replaced with invented numbers.
+              part of this app rather than replaced with invented numbers. Stats is club-scoped for
+              the same reason.
+            </li>
+            <li>
+              Creator pages only see the recent window of each channel's public feed, so an older tier
+              list drops out of Meta as new uploads arrive.
             </li>
             <li>
               Ban rates are not published anywhere official, so they are not estimated from pick rates.

@@ -1,11 +1,11 @@
 /**
- * Club meta arithmetic — pure, no I/O, so it can be tested directly.
+ * Club stats arithmetic — pure, no I/O, so it can be tested directly.
  *
- * The official API publishes no global win or pick rates, so club meta is
+ * The official API publishes no global win or pick rates, so club stats are
  * aggregated from the members' own battle logs. Every number carries its sample
  * size: a brawler with two games reads as two games.
  */
-import type { PlayerBattle } from "../club/types.ts";
+import type { PlayerBattle } from "./types.ts";
 
 export type MetaQueue = "all" | "ladder" | "ranked";
 

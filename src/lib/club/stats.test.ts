@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { LOW_SAMPLE, aggregateBattles } from "./club-stats.ts";
-import type { PlayerBattle } from "../club/types.ts";
+import { LOW_SAMPLE, aggregateBattles } from "./stats.ts";
+import type { PlayerBattle } from "./types.ts";
 
 function battle(overrides: Partial<PlayerBattle>): PlayerBattle {
   return {

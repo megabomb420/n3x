@@ -1,273 +1,179 @@
 import { useQuery } from "@tanstack/react-query";
-import { useMemo, useState } from "react";
-import { findBrawler, loadCatalog } from "@/lib/meta/brawlapi";
-import type { Catalog } from "@/lib/meta/types";
-import { LOW_SAMPLE, loadClubMeta, type MetaQueue, type MetaRow } from "@/lib/meta/club-meta";
-import { displayBrawlerName, titleCaseMode } from "@/lib/meta/names";
-import { formatPicks, formatRelative } from "@/lib/meta/format";
+import { ExternalLink, Youtube } from "lucide-react";
+import { loadCatalog } from "@/lib/meta/brawlapi";
+import { loadCreators, type CreatorEntry, type CreatorVideo } from "@/lib/meta/creators";
+import { displayBrawlerName } from "@/lib/meta/names";
+import { formatRelative } from "@/lib/meta/format";
+import type { BrawlerCatalogItem, Catalog } from "@/lib/meta/types";
 import { useOnline } from "@/hooks/use-online";
-import { cn } from "@/lib/utils";
 import { Portrait } from "./portrait";
 import { EmptyState, ErrorState, OfflineBanner, SkeletonRows } from "./state-views";
 
-const QUEUES: Array<{ id: MetaQueue; label: string }> = [
-  { id: "all", label: "All" },
-  { id: "ladder", label: "Ladder" },
-  { id: "ranked", label: "Ranked" },
-];
-
-const pct = (value: number) => `${Math.round(value * 100)}%`;
-
-function signed(value: number): string {
-  if (value === 0) return "0";
-  return `${value > 0 ? "+" : "−"}${Math.abs(value).toLocaleString("en-GB")}`;
+/** Brawlers named in the titles this card shows, so the list reads at a glance. */
+function brawlersInTitles(titles: string[], catalog: Catalog | null): BrawlerCatalogItem[] {
+  if (!catalog || titles.length === 0) return [];
+  const found = new Map<string, BrawlerCatalogItem>();
+  for (const brawler of catalog.brawlers) {
+    if (brawler.name.length < 3) continue;
+    const pattern = new RegExp(`\\b${brawler.name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\\b`, "i");
+    if (!titles.some((title) => pattern.test(title))) continue;
+    found.set(brawler.cubeName, brawler);
+    if (found.size >= 6) break;
+  }
+  return [...found.values()];
 }
 
 /**
- * Club meta: what the club played and won with, straight from the members'
- * battle logs. No global win rates exist in the official API, so this screen
- * shows its own sample sizes instead of borrowing a tier list.
+ * The game's meta, as the creators publish it: their newest tier lists and meta
+ * uploads. Titles and dates only — placements inside a video are never
+ * transcribed, because the app cannot see them.
  */
 export function MetaScreen() {
   const online = useOnline();
-  const [queue, setQueue] = useState<MetaQueue>("all");
-  const [sort, setSort] = useState<"picks" | "winRate">("picks");
-  const query = useQuery({
-    queryKey: ["club-meta", queue],
-    queryFn: () => loadClubMeta(queue),
-    refetchInterval: 300_000,
-  });
+  const query = useQuery({ queryKey: ["creators"], queryFn: loadCreators, refetchInterval: 1_800_000 });
   const catalog = useQuery({ queryKey: ["catalog"], queryFn: loadCatalog }).data ?? null;
-  const meta = query.data;
-
-  const brawlers = useMemo(() => {
-    const rows = meta?.brawlers ?? [];
-    return [...rows].sort((a, b) =>
-      sort === "picks"
-        ? b.picks - a.picks || b.winRate - a.winRate
-        : b.winRate - a.winRate || b.picks - a.picks,
-    );
-  }, [meta, sort]);
+  const data = query.data;
 
   if (query.isLoading) {
     return (
       <div className="px-3">
-        <SkeletonRows count={8} />
+        <SkeletonRows count={6} />
       </div>
     );
   }
-  if (query.isError && !meta) {
+  if (query.isError && !data) {
     return (
       <div className="px-3">
         <ErrorState
-          title="Meta unavailable"
-          body={query.error instanceof Error ? query.error.message : "Could not read the club's battle logs."}
+          title="Creator feeds unavailable"
+          body={query.error instanceof Error ? query.error.message : "Could not read the creator feeds."}
           onRetry={() => void query.refetch()}
         />
       </div>
     );
   }
-  if (!meta) return null;
+  if (!data) return null;
+
+  const anything = data.creators.some((creator) => creator.list || creator.recent.length > 0);
 
   return (
     <div className="flex flex-col gap-3 px-3">
-      {!online ? <OfflineBanner stale={Boolean(meta)} /> : null}
+      {!online ? <OfflineBanner stale={Boolean(data)} /> : null}
 
-      <Segmented
-        value={queue}
-        onChange={setQueue}
-        options={QUEUES.map((entry) => ({ id: entry.id, label: entry.label, hint: meta.totals[entry.id] }))}
-      />
+      <p className="flex items-start gap-2 text-[11px] leading-relaxed text-subtle">
+        <Youtube className="mt-0.5 size-3.5 shrink-0 text-muted" />
+        What the creators are saying — their newest tier-list and meta uploads, straight from their public feeds.
+        Titles and dates only; placements inside a video are not transcribed.
+      </p>
 
-      <section className="rounded-2xl bg-surface p-4">
-        <div className="flex items-start justify-between gap-3">
-          <div>
-            <p className="text-xs uppercase tracking-wider text-subtle">Battles analysed</p>
-            <p className="font-display text-3xl leading-none tracking-wide">{meta.battles.toLocaleString("en-GB")}</p>
-          </div>
-          <div className="text-right">
-            <p className="text-xs uppercase tracking-wider text-subtle">Club win rate</p>
-            <p className={cn("font-display text-3xl leading-none tracking-wide", meta.winRate >= 0.5 ? "text-win" : "text-fg")}>
-              {pct(meta.winRate)}
-            </p>
-          </div>
-        </div>
-        <dl className="mt-3 grid grid-cols-3 gap-2 text-center">
-          <Stat label="Wins" value={meta.wins.toLocaleString("en-GB")} />
-          <Stat label="Members" value={String(meta.members)} hint={meta.unavailable > 0 ? `${meta.unavailable} without logs` : undefined} />
-          <Stat
-            label="Window"
-            value={meta.windowStart ? `${Math.max(1, Math.round((Date.now() - Date.parse(meta.windowStart)) / 86_400_000))}d` : "—"}
-          />
-        </dl>
-        <p className="mt-3 text-[11px] text-subtle">
-          {meta.windowStart && meta.windowEnd
-            ? `${new Date(meta.windowStart).toLocaleDateString("en-GB")} → ${new Date(meta.windowEnd).toLocaleDateString("en-GB")} · `
-            : ""}
-          updated {formatRelative(meta.fetchedAt)} · club battle logs, Supercell API
-        </p>
-      </section>
-
-      {meta.battles === 0 ? (
+      {!anything ? (
         <EmptyState
-          title="No competitive battles yet"
-          body="Nothing on this queue in the members' recent battle logs. Ladder and Ranked games show up here as they are played."
+          title="No tier lists in the feed window"
+          body="The creator feeds carry no tier-list or meta upload right now. Their newest uploads still show below each channel."
         />
-      ) : (
-        <>
-          <section>
-            <div className="mb-1.5 flex items-center justify-between">
-              <h2 className="font-display text-lg tracking-wide">Brawlers</h2>
-              <div className="flex overflow-hidden rounded-full border border-border text-[11px]">
-                {(["picks", "winRate"] as const).map((mode) => (
-                  <button
-                    key={mode}
-                    type="button"
-                    onClick={() => setSort(mode)}
-                    className={cn(
-                      "min-h-8 px-3",
-                      sort === mode ? "bg-surface-3 text-fg" : "text-subtle",
-                    )}
-                  >
-                    {mode === "picks" ? "Picks" : "Win rate"}
-                  </button>
-                ))}
-              </div>
-            </div>
-            <ul className="flex flex-col gap-1.5">
-              {brawlers.map((row) => (
-                <BrawlerRow key={row.name} row={row} catalog={catalog} />
-              ))}
-            </ul>
-          </section>
+      ) : null}
 
-          <Breakdown title="Modes" rows={meta.modes} label={titleCaseMode} />
-          <Breakdown title="Maps" rows={meta.maps} label={(name) => name} limit={10} />
-        </>
+      {data.creators.map((creator) => (
+        <CreatorCard key={creator.id} creator={creator} catalog={catalog} />
+      ))}
+
+      <p className="pb-2 text-[11px] text-subtle">
+        Source: YouTube RSS through this app's backend · updated {formatRelative(data.fetchedAt)}
+      </p>
+    </div>
+  );
+}
+
+function CreatorCard({ creator, catalog }: { creator: CreatorEntry; catalog: Catalog | null }) {
+  const videos = [creator.list, ...creator.recent].filter((video): video is CreatorVideo => video !== null);
+  const chips = brawlersInTitles(videos.map((video) => video.title), catalog);
+
+  return (
+    <section className="rounded-2xl bg-surface p-3">
+      <div className="flex items-baseline justify-between gap-2">
+        <h2 className="font-display text-lg tracking-wide">{creator.name}</h2>
+        <a
+          href={creator.channelUrl}
+          target="_blank"
+          rel="noreferrer"
+          className="inline-flex items-center gap-1 text-[11px] text-muted"
+        >
+          {creator.handle}
+          <ExternalLink className="size-3" />
+        </a>
+      </div>
+
+      {creator.error ? <p className="mt-2 text-xs text-low">Feed unavailable ({creator.error})</p> : null}
+
+      {creator.list ? (
+        <a
+          href={creator.list.watchUrl}
+          target="_blank"
+          rel="noreferrer"
+          className="mt-2 flex gap-3 rounded-xl bg-surface-2 p-2"
+        >
+          <img
+            src={creator.list.thumbnailUrl}
+            alt=""
+            width={128}
+            height={72}
+            loading="lazy"
+            decoding="async"
+            className="h-[72px] w-32 shrink-0 rounded-lg bg-surface-3 object-cover"
+          />
+          <span className="min-w-0 flex-1">
+            <span className="flex items-center gap-1.5">
+              <span className="rounded-full bg-surface-3 px-2 py-0.5 text-[10px] uppercase tracking-wider text-gold">
+                {creator.list.kind}
+              </span>
+              <span className="text-[10px] text-subtle">
+                {formatRelative(Date.parse(creator.list.publishedAt))}
+              </span>
+            </span>
+            <span className="mt-1 line-clamp-3 block text-sm leading-snug text-fg">{creator.list.title}</span>
+          </span>
+        </a>
+      ) : (
+        <p className="mt-2 text-xs text-subtle">
+          {creator.latest
+            ? `No tier list in the feed window — newest upload ${formatRelative(Date.parse(creator.latest.publishedAt))}.`
+            : "Nothing in the feed window."}
+        </p>
       )}
 
-      <p className="pb-2 text-[11px] leading-relaxed text-subtle">
-        Counting competitive battles only — friendlies and event modes stay out. The official API publishes no global
-        win or pick rates, so these are this club's own games; a row with fewer than {LOW_SAMPLE} picks is marked as a
-        small sample rather than ranked against the rest. The right-hand number is net trophies on the ladder and net
-        Elo in Ranked — a dash means the API published none for those battles.
-      </p>
-    </div>
-  );
-}
-
-function Stat({ label, value, hint }: { label: string; value: string; hint?: string }) {
-  return (
-    <div className="rounded-xl bg-surface-2 px-2 py-2">
-      <dt className="text-[10px] uppercase tracking-wider text-subtle">{label}</dt>
-      <dd className="mt-0.5 text-sm text-fg">{value}</dd>
-      {hint ? <p className="text-[10px] text-low">{hint}</p> : null}
-    </div>
-  );
-}
-
-function Segmented<T extends string>({
-  value,
-  onChange,
-  options,
-}: {
-  value: T;
-  onChange: (next: T) => void;
-  options: Array<{ id: T; label: string; hint?: number }>;
-}) {
-  return (
-    <div className="flex gap-1 rounded-full bg-surface p-1">
-      {options.map((option) => (
-        <button
-          key={option.id}
-          type="button"
-          onClick={() => onChange(option.id)}
-          aria-pressed={value === option.id}
-          className={cn(
-            "min-h-9 flex-1 rounded-full px-3 text-xs font-medium",
-            value === option.id ? "bg-surface-3 text-fg" : "text-subtle",
-          )}
-        >
-          {option.label}
-          {option.hint != null ? <span className="ml-1 text-[10px] text-subtle">{option.hint}</span> : null}
-        </button>
-      ))}
-    </div>
-  );
-}
-
-function BrawlerRow({
-  row,
-  catalog,
-}: {
-  row: MetaRow;
-  catalog: Catalog | null;
-}) {
-  const small = row.picks < LOW_SAMPLE;
-  return (
-    <li className="flex items-center gap-2.5 rounded-xl bg-surface px-3 py-2">
-      <Portrait catalog={findBrawler(catalog, row.name)} cubeName={row.name} size={32} decorative />
-      <div className="min-w-0 flex-1">
-        <div className="flex items-baseline gap-1.5">
-          <p className="truncate text-sm text-fg">{displayBrawlerName(row.name)}</p>
-          {small ? <span className="shrink-0 text-[10px] text-low">small sample</span> : null}
+      {chips.length > 0 ? (
+        <div className="mt-2 flex flex-wrap items-center gap-1.5">
+          {chips.map((brawler) => (
+            <span
+              key={brawler.cubeName}
+              className="flex items-center gap-1 rounded-full bg-surface-2 py-0.5 pl-0.5 pr-2 text-[11px] text-muted"
+            >
+              <Portrait catalog={brawler} cubeName={brawler.cubeName} size={18} decorative />
+              {displayBrawlerName(brawler.name)}
+            </span>
+          ))}
         </div>
-        <div className="mt-1 h-1.5 overflow-hidden rounded-full bg-surface-3">
-          <div
-            className={cn("h-full rounded-full", row.winRate >= 0.5 ? "bg-win" : "bg-gold")}
-            style={{ width: `${Math.round(row.winRate * 100)}%` }}
-          />
-        </div>
-      </div>
-      <div className="w-16 shrink-0 text-right">
-        <p className="text-sm text-fg">{pct(row.winRate)}</p>
-        <p className="text-[10px] text-subtle">{formatPicks(row.picks)}</p>
-      </div>
-      <p
-        className={cn(
-          "w-14 shrink-0 text-right text-xs",
-          row.changeKnown === 0 ? "text-subtle" : row.trophyChange >= 0 ? "text-win" : "text-danger",
-        )}
-      >
-        {row.changeKnown === 0 ? "—" : signed(row.trophyChange)}
-      </p>
-    </li>
-  );
-}
+      ) : null}
 
-function Breakdown({
-  title,
-  rows,
-  label,
-  limit,
-}: {
-  title: string;
-  rows: MetaRow[];
-  label: (name: string) => string;
-  limit?: number;
-}) {
-  const shown = limit ? rows.slice(0, limit) : rows;
-  if (shown.length === 0) return null;
-  return (
-    <section>
-      <h2 className="mb-1.5 font-display text-lg tracking-wide">{title}</h2>
-      <ul className="flex flex-col gap-1.5">
-        {shown.map((row) => (
-          <li key={row.name} className="flex items-center gap-3 rounded-xl bg-surface px-3 py-2">
-            <p className="min-w-0 flex-1 truncate text-sm text-fg">{label(row.name)}</p>
-            <div className="w-24 shrink-0">
-              <div className="h-1.5 overflow-hidden rounded-full bg-surface-3">
-                <div
-                  className={cn("h-full rounded-full", row.winRate >= 0.5 ? "bg-win" : "bg-gold")}
-                  style={{ width: `${Math.round(row.winRate * 100)}%` }}
-                />
-              </div>
-            </div>
-            <p className="w-10 shrink-0 text-right text-xs text-muted">{pct(row.winRate)}</p>
-            <p className="w-10 shrink-0 text-right text-[10px] text-subtle">{formatPicks(row.picks)}</p>
-          </li>
-        ))}
-      </ul>
+      {creator.recent.length > 0 ? (
+        <ul className="mt-2 flex flex-col gap-0.5">
+          {creator.recent.map((video) => (
+            <li key={video.videoId}>
+              <a
+                href={video.watchUrl}
+                target="_blank"
+                rel="noreferrer"
+                className="flex items-baseline gap-2 rounded-lg px-1 py-1 hover:bg-surface-2"
+              >
+                <span className="min-w-0 flex-1 truncate text-xs text-muted">{video.title}</span>
+                <span className="shrink-0 text-[10px] text-subtle">
+                  {formatRelative(Date.parse(video.publishedAt))}
+                </span>
+              </a>
+            </li>
+          ))}
+        </ul>
+      ) : null}
     </section>
   );
 }

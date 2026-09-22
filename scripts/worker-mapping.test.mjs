@@ -9,12 +9,14 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import {
   bareTag,
+  classifyCreatorTitle,
   diffRoster,
   mapBattles,
   mapClub,
   mapPlayer,
   mapRanking,
   mapRotation,
+  parseCreatorFeed,
   plainName,
   tagPath,
 } from "../worker/index.js";
@@ -196,6 +198,41 @@ test("the battle log becomes the app's battle rows, Ranked queues included", () 
   assert.equal(battles[1].ranked, true, "soloRanked is a Ranked queue");
   assert.equal(battles[1].victory, false);
   assert.equal(battles[1].brawlerTrophies, 16, "Ranked stores the league index in that field");
+});
+
+test("creator titles classify, and a live stream is never a tier list", () => {
+  assert.equal(classifyCreatorTitle("Ranking ALL Brawlers — Pro Tier List").kind, "tier list");
+  assert.equal(classifyCreatorTitle("The NEW Meta Explained").kind, "meta");
+  assert.equal(classifyCreatorTitle("Top 10 Best Brawlers").kind, "top picks");
+  assert.equal(classifyCreatorTitle("LIVE: pushing trophies").kind, null);
+  assert.equal(classifyCreatorTitle("a random vlog").kind, null);
+  assert.ok(
+    classifyCreatorTitle("Ranking ALL Brawlers — Pro Tier List").score >
+      classifyCreatorTitle("My Tier List").score,
+    "a full ranking outranks a vague tier list",
+  );
+});
+
+test("a creator feed parses to entries, newest first, with links", () => {
+  const xml = `<?xml version="1.0" encoding="UTF-8"?><feed xmlns:yt="http://www.youtube.com/xml/schemas/2015">
+    <entry>
+      <yt:videoId>abc123</yt:videoId>
+      <title>Ranking ALL Brawlers — Pro Tier List</title>
+      <published>2026-09-20T10:00:00+00:00</published>
+    </entry>
+    <entry>
+      <yt:videoId>def456</yt:videoId>
+      <title>LIVE ranked grind &amp; chill</title>
+      <published>2026-09-21T10:00:00+00:00</published>
+    </entry>
+  </feed>`;
+  const entries = parseCreatorFeed(xml);
+  assert.equal(entries.length, 2);
+  assert.equal(entries[0].videoId, "def456", "newest first");
+  assert.equal(entries[0].kind, null);
+  assert.equal(entries[1].kind, "tier list");
+  assert.equal(entries[1].watchUrl, "https://www.youtube.com/watch?v=abc123");
+  assert.match(entries[1].thumbnailUrl, /abc123/);
 });
 
 test("the API's colour markup is stripped from names", () => {
