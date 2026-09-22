@@ -27,6 +27,23 @@ Measured, not assumed (all from this machine):
 
 ## Product
 
+### 2026-09-22 (late): live on the official API
+
+`BRAWL_API_KEY` is set on the Worker — the owner's key, whose `cidrs` limit it to RoyaleAPI's proxy address. Verified against the live Worker and both hosts:
+
+- `GET /club` → 'N3X, 28 members, 3,532,223 trophies, the first snapshot stored (`baseline:true`), `source: "Supercell Brawl Stars API"`.
+- `GET /player/PCRRUPUCP` → 161,930 trophies, Ranked 3,575 ELO / DIAMOND II, peak 7,481 / LEGENDARY II, ALIEN FAME II, 107 brawlers with hyper-charge flags, 25 battles with mode, map, brawler and result, `inClub:true`, role `senior`.
+- `GET /ladder?type=players` → 200 rows in the API's order; `GET /maps` → 13 live events.
+- Club, member page, Ladder and Maps render that data on https://n3x-dk5.pages.dev and https://megabomb420.github.io/n3x/ .
+
+Three mapping bugs the live payloads exposed, each now covered by a test:
+
+- `/events/rotation` answers with a **bare array** of `{startTime,endTime,slotId,event:{mode,map}}`, not `{active,upcoming}`; the live/upcoming split is done against the clock in `mapRotation()`.
+- The Ranked fields are `rankedRankName` and `highestAllTimeRankedRankName`, not `rankedName`.
+- Names carry colour markup (`<c7>Pikachu</c>`); `plainName()` strips it from club, member, player and leaderboard names.
+
+The edge-cache key now carries `CACHE_VERSION`, so a deploy that changes a mapper stops serving the previous shape for the rest of its 15-minute TTL.
+
 ### 2026-09-22 (night): the app is off BTN and hosted
 
 The client no longer knows Brawl Time Ninja exists.

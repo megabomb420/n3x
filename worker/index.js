@@ -28,6 +28,8 @@ const PLAYER_TTL_SECONDS = 60;
 const META_TTL_SECONDS = 900;
 const EVENTS_KEPT = 40;
 const MAX_REQUESTS_PER_MINUTE = 90;
+/** Bumped when a mapper changes shape, so a deploy stops serving the old one. */
+const CACHE_VERSION = "2";
 
 const CORS_HEADERS = {
   "access-control-allow-origin": "*",
@@ -82,12 +84,17 @@ function num(value, fallback = 0) {
   return typeof value === "number" && Number.isFinite(value) ? value : fallback;
 }
 
+/** The API wraps coloured name parts in `<cN>…</c>`; the app shows plain text. */
+export function plainName(value) {
+  return String(value ?? "").replace(/<c\d*>/gi, "").replace(/<\/c>/gi, "").trim();
+}
+
 /** Official club payload → the app's ClubLive shape. */
 export function mapClub(raw) {
   const members = Array.isArray(raw?.members) ? raw.members : [];
   return {
     tag: bareTag(raw?.tag),
-    name: String(raw?.name ?? "").slice(0, 32),
+    name: plainName(raw?.name).slice(0, 32),
     description: String(raw?.description ?? "").slice(0, 200),
     type: String(raw?.type ?? "inviteOnly"),
     badgeId: Number.isFinite(raw?.badgeId) ? raw.badgeId : null,
@@ -99,7 +106,7 @@ export function mapClub(raw) {
         const iconId = num(member?.icon?.id, NaN);
         return {
           tag: bareTag(member?.tag),
-          name: String(member?.name ?? "").slice(0, 32),
+          name: plainName(member?.name).slice(0, 32),
           nameColor: typeof member?.nameColor === "string" ? member.nameColor : null,
           role: String(member?.role ?? "member"),
           trophies: num(member?.trophies),
@@ -163,7 +170,7 @@ export function mapPlayer(raw, clubRole = null, clubTag = "") {
   brawlers.sort((a, b) => b.trophies - a.trophies);
   return {
     tag: bareTag(raw?.tag),
-    name: String(raw?.name ?? "Player"),
+    name: plainName(raw?.name) || "Player",
     nameColor: typeof raw?.nameColor === "string" ? raw.nameColor : null,
     iconId: Number.isFinite(iconId) ? iconId : null,
     iconUrl: profileIconUrl(iconId),
@@ -171,18 +178,27 @@ export function mapPlayer(raw, clubRole = null, clubTag = "") {
     highestTrophies: num(raw?.highestTrophies),
     expLevel: num(raw?.expLevel),
     rankedElo: Number.isFinite(raw?.rankedElo) ? raw.rankedElo : null,
-    rankedRankName: typeof raw?.rankedName === "string" ? raw.rankedName : null,
+    rankedRankName:
+      typeof raw?.rankedRankName === "string"
+        ? raw.rankedRankName
+        : typeof raw?.rankedName === "string"
+          ? raw.rankedName
+          : null,
     highestAllTimeRankedElo: Number.isFinite(raw?.highestAllTimeRankedElo)
       ? raw.highestAllTimeRankedElo
       : null,
     highestAllTimeRankedRankName:
-      typeof raw?.highestAllTimeRankedName === "string" ? raw.highestAllTimeRankedName : null,
+      typeof raw?.highestAllTimeRankedRankName === "string"
+        ? raw.highestAllTimeRankedRankName
+        : typeof raw?.highestAllTimeRankedName === "string"
+          ? raw.highestAllTimeRankedName
+          : null,
     victories3v3: num(raw?.["3vs3Victories"]),
     soloVictories: num(raw?.soloVictories),
     duoVictories: num(raw?.duoVictories),
     fameTierName: typeof raw?.fameTierName === "string" ? raw.fameTierName : null,
     clubTag: tag || null,
-    clubName: raw?.club ? String(raw.club.name ?? "") || null : null,
+    clubName: raw?.club ? plainName(raw.club.name) || null : null,
     inClub: Boolean(tag) && tag === bareTag(clubTag),
     clubRole,
     brawlers,
@@ -239,9 +255,9 @@ export function mapRanking(type, raw) {
     rows: items.map((row) => ({
       rank: num(row?.rank),
       tag: bareTag(row?.tag),
-      name: String(row?.name ?? ""),
+      name: plainName(row?.name),
       trophies: num(row?.trophies),
-      clubName: row?.club ? String(row.club.name ?? "") || null : null,
+      clubName: row?.club ? plainName(row.club.name) || null : null,
       memberCount: Number.isFinite(row?.memberCount) ? row.memberCount : null,
     })),
   };
@@ -276,7 +292,7 @@ function upstreamUnavailable(err) {
 async function cached(request, ctx, ttlSeconds, produce) {
   if (request.method !== "GET") return produce();
   const cache = caches.default;
-  const key = new Request(new URL(request.url).toString());
+  const key = new Request(`${request.url}${request.url.includes("?") ? "&" : "?"}v=${CACHE_VERSION}`);
   const hit = await cache.match(key);
   if (hit) return hit;
   const res = await produce();
@@ -389,26 +405,39 @@ async function handleLadder(request, env, ctx) {
   });
 }
 
+/**
+ * The rotation endpoint answers with a bare array of
+ * `{ startTime, endTime, slotId, event: { mode, map } }` — no active/upcoming
+ * split, so it is made here against the clock.
+ */
+export function mapRotation(entries, now = Date.now()) {
+  const startsAt = (event) => (event.startTime ? Date.parse(event.startTime) : 0);
+  const endsAt = (event) => (event.endTime ? Date.parse(event.endTime) : Number.POSITIVE_INFINITY);
+  const events = (Array.isArray(entries) ? entries : [])
+    .map((entry) => ({
+      slot: Number.isFinite(entry?.slotId) ? `Slot ${entry.slotId}` : "",
+      mode: String(entry?.event?.mode ?? ""),
+      map: String(entry?.event?.map ?? ""),
+      startTime: entry?.startTime ? isoFromBattleTime(entry.startTime) : null,
+      endTime: entry?.endTime ? isoFromBattleTime(entry.endTime) : null,
+    }))
+    .filter((event) => event.mode || event.map);
+  return {
+    updatedAt: now,
+    active: events
+      .filter((event) => startsAt(event) <= now && endsAt(event) > now)
+      .sort((a, b) => a.slot.localeCompare(b.slot, undefined, { numeric: true })),
+    upcoming: events.filter((event) => startsAt(event) > now).sort((a, b) => startsAt(a) - startsAt(b)),
+    source: "Supercell Brawl Stars API",
+  };
+}
+
 async function handleMaps(request, env, ctx) {
   return cached(request, ctx, META_TTL_SECONDS, async () => {
     try {
       const res = await upstream(env, "/events/rotation");
       if (!res.ok) return upstreamFailure(res.status, res.body);
-      const rotation = JSON.parse(res.body);
-      const list = (entries) =>
-        (Array.isArray(entries) ? entries : []).map((entry) => ({
-          slot: String(entry?.slot?.name ?? ""),
-          mode: String(entry?.event?.mode ?? ""),
-          map: String(entry?.event?.map ?? ""),
-          startTime: entry?.event?.startTime ?? entry?.startTime ?? null,
-          endTime: entry?.event?.endTime ?? entry?.endTime ?? null,
-        }));
-      return json({
-        updatedAt: Date.now(),
-        active: list(rotation?.active).filter((event) => event.mode || event.map),
-        upcoming: list(rotation?.upcoming).filter((event) => event.mode || event.map),
-        source: "Supercell Brawl Stars API",
-      });
+      return json(mapRotation(JSON.parse(res.body)));
     } catch (err) {
       return upstreamUnavailable(err);
     }

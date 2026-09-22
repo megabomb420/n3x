@@ -14,6 +14,8 @@ import {
   mapClub,
   mapPlayer,
   mapRanking,
+  mapRotation,
+  plainName,
   tagPath,
 } from "../worker/index.js";
 
@@ -50,6 +52,49 @@ test("a club payload becomes the app's club, icons included", () => {
   assert.equal(typeof club.fetchedAt, "number");
 });
 
+test("the rotation splits into live and upcoming against the clock", () => {
+  const entries = [
+    {
+      startTime: "20260922T080000.000Z",
+      endTime: "20260923T080000.000Z",
+      slotId: 3,
+      event: { id: 1, mode: "gemGrab", modeId: 0, map: "Hard Rock Mine" },
+    },
+    {
+      startTime: "20260922T180000.000Z",
+      endTime: "20260923T180000.000Z",
+      slotId: 4,
+      event: { id: 2, mode: "hotZone", modeId: 17, map: "Under Pressure" },
+    },
+  ];
+  const mapped = mapRotation(entries, Date.parse("2026-09-22T20:00:00.000Z"));
+  assert.deepEqual(mapped.active, [
+    {
+      slot: "Slot 3",
+      mode: "gemGrab",
+      map: "Hard Rock Mine",
+      startTime: "2026-09-22T08:00:00.000Z",
+      endTime: "2026-09-23T08:00:00.000Z",
+    },
+    {
+      slot: "Slot 4",
+      mode: "hotZone",
+      map: "Under Pressure",
+      startTime: "2026-09-22T18:00:00.000Z",
+      endTime: "2026-09-23T18:00:00.000Z",
+    },
+  ]);
+  assert.equal(mapped.upcoming.length, 0, "both windows are live at 20:00");
+  const early = mapRotation(entries, Date.parse("2026-09-22T07:00:00.000Z"));
+  assert.equal(early.active.length, 0);
+  assert.equal(early.upcoming.length, 2, "both windows are still ahead at 07:00");
+  const finished = mapRotation(
+    [{ startTime: "20260922T000000.000Z", endTime: "20260922T060000.000Z", slotId: 1, event: { mode: "heist", map: "Hot Potato" } }],
+    Date.parse("2026-09-22T20:00:00.000Z"),
+  );
+  assert.equal(finished.active.length + finished.upcoming.length, 0, "a finished window is neither");
+});
+
 test("a player payload becomes the app's profile with Ranked fields", () => {
   const profile = mapPlayer(
     {
@@ -64,9 +109,10 @@ test("a player payload becomes the app's profile with Ranked fields", () => {
       soloVictories: 802,
       duoVictories: 3005,
       rankedElo: 6120,
-      rankedName: "Legendary I",
+      rankedRank: 11,
+      rankedRankName: "DIAMOND II",
       highestAllTimeRankedElo: 8300,
-      highestAllTimeRankedName: "Masters I",
+      highestAllTimeRankedRankName: "LEGENDARY II",
       club: { tag: "#2JYGUQ2P8", name: "'N3X" },
       brawlers: [
         { id: 16000000, name: "SHELLY", power: 9, rank: 30, trophies: 864, highestTrophies: 1006 },
@@ -85,8 +131,8 @@ test("a player payload becomes the app's profile with Ranked fields", () => {
     "#2JYGUQ2P8",
   );
   assert.equal(profile.rankedElo, 6120);
-  assert.equal(profile.rankedRankName, "Legendary I");
-  assert.equal(profile.highestAllTimeRankedRankName, "Masters I");
+  assert.equal(profile.rankedRankName, "DIAMOND II");
+  assert.equal(profile.highestAllTimeRankedRankName, "LEGENDARY II");
   assert.equal(profile.victories3v3, 49221);
   assert.equal(profile.clubTag, "2JYGUQ2P8");
   assert.equal(profile.inClub, true);
@@ -147,6 +193,15 @@ test("the battle log becomes the app's battle rows, Ranked queues included", () 
   assert.equal(battles[1].ranked, true, "soloRanked is a Ranked queue");
   assert.equal(battles[1].victory, false);
   assert.equal(battles[1].brawlerTrophies, 16, "Ranked stores the league index in that field");
+});
+
+test("the API's colour markup is stripped from names", () => {
+  assert.equal(plainName("<c7>Pikachu</c> Club"), "Pikachu Club");
+  assert.equal(plainName("Heaven🍁"), "Heaven🍁");
+  const rows = mapRanking("players", {
+    items: [{ rank: 4, tag: "#X", name: "Mikee", trophies: 1, club: { name: "<c7>Pikachu</c>" } }],
+  }).rows;
+  assert.equal(rows[0].clubName, "Pikachu");
 });
 
 test("leaderboards keep the rank the API returned", () => {
