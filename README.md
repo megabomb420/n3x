@@ -17,9 +17,11 @@ On the **published** site, club and meta both fail:
 - Club: `Source unavailable (403)`
 - Cube token: `Token source unavailable (403)`
 
-The preview (this machine) can fetch `https://brawltime.ninja/club/2JYGUQ2P8` and `POST https://brawltime.ninja/api/trpc/auth.getToken` and gets HTTP 200. The same requests from the Vercel server that hosts `n3x.grok.me` come back **403**. Cloudflare in front of Brawl Time Ninja is rejecting the datacenter IP. The HTML page has no CORS headers, so the browser cannot fetch it directly either.
+Root cause, measured 2026-09-22: `brawltime.ninja` returns `403 cf-mitigated: challenge` to **every** datacenter egress — Cloudflare Workers, GitHub Actions/Azure, `r.jina.ai` and Vercel alike (only `/robots.txt` passes) — and sends no CORS headers, so a hosted app cannot read it from the server *or* the browser. The published build is also stale: `/btn-src/*` 404s although the current source builds that rewrite.
 
-See `src/lib/club/queries.ts` (`fetchHtml`) and `src/lib/meta/token.ts`.
+The replacement backend is `worker/` (deployed as `n3x-api`), built on the **official** Brawl Stars API (`api.brawlstars.com`, reached through RoyaleAPI's public proxy because official keys are IP-locked) with the join/leave log in Workers KV. It needs the owner's `BRAWL_API_KEY` secret; see `HANDOFF.md` for the current state, the exact commands and the feature consequences (BTN's Cube aggregates are unreachable from any host).
+
+See `worker/index.js` for the API surface and `src/lib/club/queries.ts` for the still-current BTN path.
 
 ## Stack
 

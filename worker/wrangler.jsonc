@@ -1,0 +1,13 @@
+{
+  "name": "n3x-api",
+  "main": "index.js",
+  "compatibility_date": "2026-09-01",
+  "workers_dev": true,
+  "observability": { "enabled": true },
+  "vars": {
+    "UPSTREAM_BASE": "https://bsproxy.royaleapi.dev/v1",
+    "CLUB_TAG": "#2JYGUQ2P8",
+    "CLUB_NAME": "'N3X"
+  },
+  "kv_namespaces": [{ "binding": "DATA", "id": "e8847911c6d847139c6681b08b8c4a46" }]
+}

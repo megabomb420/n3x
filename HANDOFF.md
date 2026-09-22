@@ -6,6 +6,25 @@ Issue: https://github.com/megabomb420/n3x/issues/1
 
 The product works in the Grok preview. The **published** site does not load club or meta. Do not invent stats, an API key, or a fake roster to hide that.
 
+## 2026-09-22 (evening): BTN is unreachable from any host — rebuilding on the official API
+
+Measured, not assumed (all from this machine):
+
+- The published site is a **stale build**: `/btn-src/club/2JYGUQ2P8` answers 404, while a local `npm run build` of `main` emits exactly that rewrite (`.vercel/output/config.json`), and its asset hashes differ from the live ones. A republish is needed regardless.
+- **Every datacenter egress is challenged.** `brawltime.ninja` (and `starlist.pro`, `brawlytix.com`, `brawlify.com`, `docs.royaleapi.com`) return `403 cf-mitigated: challenge` for `/club/*`, `/profile/*`, `/api/trpc/auth.getToken`, `cube.brawltime.ninja`, `/api/*`, `.json` variants and even `/favicon.ico` — only `/robots.txt` passes. Tested from: Cloudflare Workers, GitHub Actions (Azure, `52.186.174.150`), `r.jina.ai`, Vercel (per the 403 the live site already showed). A Chrome UA, HEAD, trailing slashes, `www.`, `http://` and Accept variations all fail.
+- BTN sends **no CORS headers** on either endpoint, so a browser cannot read them cross-origin either — the fetch must leave from a non-datacenter IP, which no hosted free option provides.
+- Consequence: the relay that briefly existed here (a PC + cloudflared quick tunnel registered into a `n3x-btn` Worker) was **removed**. A hosted replacement cannot use BTN at all.
+
+### What replaces it
+
+`api.brawlstars.com` is **not** challenged from datacenter IPs (`403 accessDenied` = missing key, not a challenge), and since 2026-05 the player payload carries Ranked fields (`rankedElo`, `rankedName`, `rankedRank`, `highestAllTimeRanked*`). Its keys are IP-locked, so the Worker calls it through RoyaleAPI's documented public proxy (`bsproxy.royaleapi.dev`) and the key whitelists *their* IPs.
+
+- New backend: `worker/` → deployed as `n3x-api` (`https://n3x-api.whip-blanket.workers.dev`), KV namespace `n3x-relay` reused as the roster-snapshot / join-leave store. Surface: `GET /club`, `GET /player/<tag>`, `GET /ladder?type=players|clubs`, `GET /maps`, `GET /health`. It maps upstream payloads into the app's existing `ClubLive` / `PlayerProfile` shapes, so `src/lib/club/types.ts` stays the contract.
+- Requires one secret the owner creates: `BRAWL_API_KEY` (`developer.brawlstars.com`), with RoyaleAPI's proxy IPs whitelisted on it. Set it with `npx wrangler secret put BRAWL_API_KEY --config worker/wrangler.jsonc` (the key itself belongs in the Supercell portal and in Cloudflare, never in git). Until it is set, every data endpoint answers `503 upstream-denied` — honest, not a fake roster.
+- **Feature consequence:** BTN's Cube aggregates (the Meta tab's win/pick rates and league-floor filters) exist nowhere else and are unreachable from a hosted app. Meta becomes the official leaderboards (`/rankings/...`), Maps becomes the live rotation (`/events/rotation`). Club, member pages (including Ranked Elo chips) and the join/leave log stay intact.
+- The app half of that rewrite (dropping `src/lib/http/btn-client.ts`, `outbound.ts`, `src/lib/meta/token.ts`, `cube.ts` and the BTN parsers in favour of the Worker client) is **not done yet** — the old server-function path is untouched in this commit.
+
+
 ## Product
 
 Unofficial companion for Brawl Stars club **'N3X**, tag `#2JYGUQ2P8`. Not affiliated with Supercell or Brawl Time Ninja.
