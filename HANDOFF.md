@@ -27,6 +27,19 @@ Measured, not assumed (all from this machine):
 
 ## Product
 
+### 2026-09-22 (later): the Meta tab is back, built from the club's own battle logs
+
+The ranked/meta screens originally read Brawl Time Ninja's Cube aggregates. Those stay unreachable from any hosted build, and the official API publishes no global win or pick rates, so Meta was rebuilt around data this app can actually source: **the members' own recent battles**.
+
+- `GET /battles/<tag>` returns one member's mapped battles (a single upstream call, edge-cached for five minutes). `mapBattles` gained `type` and `competitive` so the app can keep friendlies, challenges and event modes out of the numbers.
+- The aggregation runs in the browser, not the Worker: one Worker invocation's subrequest budget is far below 28 battle logs (a 28-log batch answers `Too many subrequests by single Worker invocation`). The app requests six members at a time, caches each log for five minutes and the aggregate for ten.
+- `src/lib/meta/club-stats.ts` is the pure arithmetic (directly tested in `club-meta.test.ts`); `src/lib/meta/club-meta.ts` is the loader.
+- The tab shows All / Ladder / Ranked with their counts, a battles / wins / win-rate / members / window summary, a brawler table with portraits, win-rate bars, net trophies and a `small sample` badge under five picks, plus mode and map breakdowns. Navigation is four tabs and `/meta` is prerendered.
+
+First live numbers (2026-09-22, club of 28): 437 competitive battles in the members' logs — 344 ladder, 93 Ranked — 64% club win rate, window 09/08 → 22/09. Verified in a real browser on Cloudflare Pages and GitHub Pages; the last table row sits above the nav (measured, after a `fullPage` screenshot suggested otherwise).
+
+What it is not: a global tier list. Every row carries its own sample size, and the screen says so.
+
 ### 2026-09-22 (late): live on the official API
 
 `BRAWL_API_KEY` is set on the Worker — the owner's key, whose `cidrs` limit it to RoyaleAPI's proxy address. Verified against the live Worker and both hosts:
