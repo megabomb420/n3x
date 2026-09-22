@@ -149,7 +149,8 @@ export function MetaScreen() {
       <p className="pb-2 text-[11px] leading-relaxed text-subtle">
         Counting competitive battles only — friendlies and event modes stay out. The official API publishes no global
         win or pick rates, so these are this club's own games; a row with fewer than {LOW_SAMPLE} picks is marked as a
-        small sample rather than ranked against the rest.
+        small sample rather than ranked against the rest. The right-hand number is net trophies on the ladder and net
+        Elo in Ranked — a dash means the API published none for those battles.
       </p>
     </div>
   );
@@ -222,8 +223,13 @@ function BrawlerRow({
         <p className="text-sm text-fg">{pct(row.winRate)}</p>
         <p className="text-[10px] text-subtle">{formatPicks(row.picks)}</p>
       </div>
-      <p className={cn("w-14 shrink-0 text-right text-xs", row.trophyChange >= 0 ? "text-win" : "text-danger")}>
-        {signed(row.trophyChange)}
+      <p
+        className={cn(
+          "w-14 shrink-0 text-right text-xs",
+          row.changeKnown === 0 ? "text-subtle" : row.trophyChange >= 0 ? "text-win" : "text-danger",
+        )}
+      >
+        {row.changeKnown === 0 ? "—" : signed(row.trophyChange)}
       </p>
     </li>
   );

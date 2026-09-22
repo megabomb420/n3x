@@ -18,6 +18,8 @@ const LOG_TTL_MS = 5 * 60_000;
 const META_TTL_MS = 10 * 60_000;
 const LOG_CONCURRENCY = 6;
 const MAX_MEMBERS = 30;
+/** Bumped when a stored shape changes, so an old payload is never re-read. */
+const CACHE_TAG = "v2";
 
 interface BattleLogPayload {
   tag: string;
@@ -25,7 +27,7 @@ interface BattleLogPayload {
 }
 
 async function loadMemberBattles(tag: string): Promise<PlayerBattle[]> {
-  const key = `battles:${tag}`;
+  const key = `battles:${CACHE_TAG}:${tag}`;
   const hit = cacheGet<PlayerBattle[]>(key);
   if (hit && Date.now() - hit.savedAt < LOG_TTL_MS) return hit.value;
   try {
@@ -40,7 +42,7 @@ async function loadMemberBattles(tag: string): Promise<PlayerBattle[]> {
 
 /** The club's meta for one queue, cached on the device for ten minutes. */
 export async function loadClubMeta(queue: MetaQueue): Promise<ClubMeta & { unavailable: number; fetchedAt: number }> {
-  const cacheKey = `club-meta:${queue}`;
+  const cacheKey = `club-meta:${CACHE_TAG}:${queue}`;
   const hit = cacheGet<ClubMeta & { unavailable: number; fetchedAt: number }>(cacheKey);
   if (hit && Date.now() - hit.savedAt < META_TTL_MS) return hit.value;
 

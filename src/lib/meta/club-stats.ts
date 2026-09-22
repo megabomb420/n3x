@@ -19,6 +19,8 @@ export interface MetaRow {
   winRate: number;
   /** Net trophies on the ladder, net Elo in Ranked. */
   trophyChange: number;
+  /** How many of the picks actually carried a trophy/Elo change; 0 means "not published". */
+  changeKnown: number;
 }
 
 export interface ClubMeta {
@@ -67,10 +69,13 @@ export function aggregateBattles(
     for (const { battle } of selected) {
       const name = key(battle);
       if (!name) continue;
-      const row = groups.get(name) ?? { name, picks: 0, wins: 0, winRate: 0, trophyChange: 0 };
+      const row = groups.get(name) ?? { name, picks: 0, wins: 0, winRate: 0, trophyChange: 0, changeKnown: 0 };
       row.picks += 1;
       if (battle.victory) row.wins += 1;
-      row.trophyChange += battle.trophyChange ?? 0;
+      if (typeof battle.trophyChange === "number") {
+        row.trophyChange += battle.trophyChange;
+        row.changeKnown += 1;
+      }
       groups.set(name, row);
     }
     return [...groups.values()]

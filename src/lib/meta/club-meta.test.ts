@@ -63,6 +63,7 @@ test("club meta counts only competitive battles and splits the queues", () => {
     wins: 1,
     winRate: 0.5,
     trophyChange: 2,
+    changeKnown: 2,
   });
   assert.equal(ladder.maps[0]?.name, "Triple Dribble");
 
@@ -76,12 +77,23 @@ test("club meta counts only competitive battles and splits the queues", () => {
   assert.equal(ranked.brawlers[0]?.trophyChange, 80, "Ranked battles carry Elo, not trophies");
 });
 
-test("a small sample is visible as a small sample", () => {
+test("a small sample is visible as a small sample, and an unpublished change is not a zero", () => {
   assert.equal(LOW_SAMPLE, 5);
   const meta = aggregateBattles(
-    [{ tag: "AAA", battles: [battle({ brawler: "COLT" }), battle({ brawler: "COLT" })] }],
+    [
+      {
+        tag: "AAA",
+        battles: [
+          battle({ brawler: "COLT" }),
+          battle({ brawler: "COLT", trophyChange: null, type: "soloRanked", ranked: true }),
+        ],
+      },
+    ],
     "all",
   );
-  assert.equal(meta.brawlers[0]?.picks, 2);
-  assert.ok((meta.brawlers[0]?.picks ?? 0) < LOW_SAMPLE);
+  const row = meta.brawlers[0];
+  assert.equal(row?.picks, 2);
+  assert.ok((row?.picks ?? 0) < LOW_SAMPLE);
+  assert.equal(row?.changeKnown, 1, "only one of the two battles published a change");
+  assert.equal(row?.trophyChange, 8, "the unpublished one is not silently counted as zero");
 });
