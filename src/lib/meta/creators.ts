@@ -37,7 +37,7 @@ const CACHE_TTL_MS = 30 * 60_000;
 const INDEX_TTL_MS = 5 * 60_000;
 const CONCURRENCY = 4;
 /** Bumped when a stored shape changes, so an old payload is never re-read. */
-const CACHE_TAG = "v2";
+const CACHE_TAG = "v3";
 
 async function loadCreatorChannel(channel: CreatorChannel): Promise<CreatorFeed> {
   const key = `creator:${CACHE_TAG}:${channel.id}`;
