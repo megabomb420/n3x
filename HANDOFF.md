@@ -38,7 +38,7 @@ The ranked/meta screens originally read Brawl Time Ninja's Cube aggregates. Thos
 
 First live numbers (2026-09-22, club of 28): 437 competitive battles in the members' logs — 344 ladder, 93 Ranked — 64% club win rate, window 09/08 → 22/09. Verified in a real browser on Cloudflare Pages and GitHub Pages; the last table row sits above the nav (measured, after a `fullPage` screenshot suggested otherwise).
 
-What it is not: a global tier list. Every row carries its own sample size, and the screen says so.
+What it is not: a global tier list. Every row carries its own sample size, and the screen says so. A battle the API published no trophy change for is excluded from that column rather than counted as a zero — a row where none carried one reads as a dash; the client cache keys carry a version so an older stored shape is never re-read.
 
 ### 2026-09-22 (late): live on the official API
 
