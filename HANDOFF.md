@@ -44,6 +44,12 @@ Three mapping bugs the live payloads exposed, each now covered by a test:
 
 The edge-cache key now carries `CACHE_VERSION`, so a deploy that changes a mapper stops serving the previous shape for the rest of its 15-minute TTL.
 
+### Key handling
+
+`BRAWL_API_KEY` lives in exactly one place: the Worker's `secret_text` binding (`npx wrangler secret list --config worker/wrangler.jsonc`). It is **not** in the repository, not in its history (`git log -S eyJ0eXAiOiJKV1Qi` is empty) and not in the build output — checked after the owner pasted it into a chat session. The owner was offered a rotation and **declined it** (2026-09-22); do not raise it again.
+
+Worth knowing for the next reader: the key's Supercell-side restriction is a `cidrs` entry for RoyaleAPI's proxy address, and the Worker reaches the API *through* that shared proxy. The allowlist therefore matches the proxy rather than this app, so whoever holds the token can use it from that proxy until it is revoked. The owner accepted that risk.
+
 ### 2026-09-22 (night): the app is off BTN and hosted
 
 The client no longer knows Brawl Time Ninja exists.
