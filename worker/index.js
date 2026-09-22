@@ -483,6 +483,8 @@ const CREATORS = [
   { id: "bobby", name: "bobby", handle: "@bobbybrawlstars", channelId: "UCcvJdy945lh9KNQnW2yr_0A" },
 ];
 const CREATORS_TTL_SECONDS = 1800;
+/** The channel index is tiny and decides what exists, so it refreshes sooner. */
+const CREATORS_INDEX_TTL_SECONDS = 300;
 const CHANNEL_ENTRIES_KEPT = 12;
 
 function creatorById(id) {
@@ -521,7 +523,7 @@ async function handleCreatorChannel(request, env, ctx, id) {
 
 /** Which creator channels this build knows about. */
 async function handleCreators(request, env, ctx) {
-  return cached(request, ctx, CREATORS_TTL_SECONDS, async () =>
+  return cached(request, ctx, CREATORS_INDEX_TTL_SECONDS, async () =>
     json({ updatedAt: Date.now(), source: "YouTube RSS", creators: CREATORS.map(creatorIndexEntry) }),
   );
 }

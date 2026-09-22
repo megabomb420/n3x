@@ -44,7 +44,7 @@ async function loadCreatorChannel(channel: CreatorChannel): Promise<CreatorFeed>
   const hit = cacheGet<CreatorFeed>(key);
   if (hit && Date.now() - hit.savedAt < CACHE_TTL_MS) return hit.value;
   try {
-    const feed = await apiGet<CreatorFeed>(`/creators/${channel.id}`);
+    const feed = await apiGet<CreatorFeed>(`/creators/${channel.id}?tag=${CACHE_TAG}`);
     cacheSet(key, feed);
     return feed;
   } catch (err) {
@@ -61,7 +61,7 @@ export async function loadCreatorFeeds(): Promise<{ channels: CreatorFeed[]; fet
   const indexHit = cacheGet<CreatorIndex>(indexKey);
   let index = indexHit && Date.now() - indexHit.savedAt < INDEX_TTL_MS ? indexHit.value : null;
   if (!index) {
-    index = await apiGet<CreatorIndex>("/creators");
+    index = await apiGet<CreatorIndex>(`/creators?tag=${CACHE_TAG}`);
     cacheSet(indexKey, index);
   }
 
