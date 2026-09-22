@@ -60,6 +60,10 @@ export interface PlayerBrawler {
 
 export interface PlayerBattle {
   timestamp: string;
+  /** Official API battle type: `ranked` is the trophy ladder, `soloRanked`/`teamRanked` are Ranked. */
+  type: string | null;
+  /** False for friendlies, challenges and event modes, which never enter club meta. */
+  competitive: boolean;
   ranked: boolean;
   result: string | null;
   victory: boolean | null;

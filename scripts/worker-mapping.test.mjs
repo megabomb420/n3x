@@ -181,6 +181,8 @@ test("the battle log becomes the app's battle rows, Ranked queues included", () 
   assert.equal(battles.length, 2);
   assert.deepEqual(battles[0], {
     timestamp: "2026-09-17T12:00:00.000Z",
+    type: "ranked",
+    competitive: true,
     ranked: false,
     result: "victory",
     victory: true,
@@ -190,6 +192,7 @@ test("the battle log becomes the app's battle rows, Ranked queues included", () 
     brawler: "NITA",
     brawlerTrophies: 850,
   });
+  assert.equal(battles[1].type, "soloRanked");
   assert.equal(battles[1].ranked, true, "soloRanked is a Ranked queue");
   assert.equal(battles[1].victory, false);
   assert.equal(battles[1].brawlerTrophies, 16, "Ranked stores the league index in that field");

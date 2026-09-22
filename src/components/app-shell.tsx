@@ -1,5 +1,5 @@
 import { Link, useRouterState } from "@tanstack/react-router";
-import { Map, Swords, Users } from "lucide-react";
+import { ChartColumn, Map, Swords, Users } from "lucide-react";
 import { useEffect, useRef, type ReactNode } from "react";
 import { cn } from "@/lib/utils";
 import { ClubLogo } from "./club-logo";
@@ -35,6 +35,7 @@ export function AppShell({
   }, [pathname]);
 
   const clubActive = pathname === "/" || pathname.startsWith("/m/");
+  const metaActive = pathname.startsWith("/meta");
   const ladderActive = pathname.startsWith("/ladder") || pathname.startsWith("/about");
   const mapsActive = pathname.startsWith("/maps");
 
@@ -62,7 +63,7 @@ export function AppShell({
       </main>
 
       <nav className="shrink-0 border-t border-border bg-bg safe-bottom" aria-label="Primary">
-        <div className="grid grid-cols-3">
+        <div className="grid grid-cols-4">
           <Link
             to="/"
             className={cn(
@@ -72,6 +73,16 @@ export function AppShell({
           >
             <Users className="size-4" strokeWidth={clubActive ? 2.2 : 1.7} />
             Club
+          </Link>
+          <Link
+            to="/meta"
+            className={cn(
+              "flex h-11 flex-col items-center justify-center gap-0.5 text-[11px] font-medium",
+              metaActive ? "text-fg" : "text-subtle",
+            )}
+          >
+            <ChartColumn className="size-4" strokeWidth={metaActive ? 2.2 : 1.7} />
+            Meta
           </Link>
           <Link
             to="/ladder"

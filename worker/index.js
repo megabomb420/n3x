@@ -207,39 +207,57 @@ export function mapPlayer(raw, clubRole = null, clubTag = "") {
   };
 }
 
-/** Official battle log → the app's PlayerBattle list. */
-export function mapBattles(items, playerTag) {
+/** One battle-log entry as a specific player lived it. */
+function readBattle(item, playerTag) {
+  const battle = item?.battle ?? {};
+  const event = item?.event ?? {};
+  const type = String(battle.type ?? "");
   const want = bareTag(playerTag);
-  const out = [];
-  for (const item of Array.isArray(items) ? items : []) {
-    const battle = item?.battle ?? {};
-    const event = item?.event ?? {};
-    const type = String(battle.type ?? "");
-    let brawler = null;
-    let brawlerTrophies = null;
-    const groups = [battle.teams, battle.players];
-    for (const group of groups) {
-      if (!Array.isArray(group)) continue;
-      for (const entry of group) {
-        const players = Array.isArray(entry) ? entry : [entry];
-        for (const player of players) {
-          if (bareTag(player?.tag) !== want) continue;
-          brawler = typeof player?.brawler?.name === "string" ? player.brawler.name : null;
-          brawlerTrophies = Number.isFinite(player?.brawler?.trophies) ? player.brawler.trophies : null;
-        }
+  let brawler = null;
+  let brawlerTrophies = null;
+  for (const group of [battle.teams, battle.players]) {
+    if (!Array.isArray(group)) continue;
+    for (const entry of group) {
+      for (const player of Array.isArray(entry) ? entry : [entry]) {
+        if (bareTag(player?.tag) !== want) continue;
+        brawler = typeof player?.brawler?.name === "string" ? player.brawler.name : null;
+        brawlerTrophies = Number.isFinite(player?.brawler?.trophies) ? player.brawler.trophies : null;
       }
     }
-    const result = typeof battle.result === "string" ? battle.result : null;
+  }
+  const result = typeof battle.result === "string" ? battle.result : null;
+  return {
+    type,
+    /** Ranked 2.0 queues; `ranked` is the trophy ladder, not Ranked mode. */
+    ranked: type === "soloRanked" || type === "teamRanked",
+    competitive: type === "ranked" || type === "soloRanked" || type === "teamRanked",
+    result,
+    victory: result === null ? null : result === "victory",
+    trophyChange: Number.isFinite(battle.trophyChange) ? battle.trophyChange : null,
+    mode: typeof event.mode === "string" ? event.mode : typeof battle.mode === "string" ? battle.mode : null,
+    map: typeof event.map === "string" ? event.map : null,
+    brawler,
+    brawlerTrophies,
+  };
+}
+
+/** Official battle log → the app's PlayerBattle list. */
+export function mapBattles(items, playerTag) {
+  const out = [];
+  for (const item of Array.isArray(items) ? items : []) {
+    const battle = readBattle(item, playerTag);
     out.push({
       timestamp: isoFromBattleTime(item?.battleTime),
-      ranked: type === "soloRanked" || type === "teamRanked",
-      result,
-      victory: result === null ? null : result === "victory",
-      trophyChange: Number.isFinite(battle.trophyChange) ? battle.trophyChange : null,
-      mode: typeof event.mode === "string" ? event.mode : typeof battle.mode === "string" ? battle.mode : null,
-      map: typeof event.map === "string" ? event.map : null,
-      brawler,
-      brawlerTrophies,
+      type: battle.type,
+      competitive: battle.competitive,
+      ranked: battle.ranked,
+      result: battle.result,
+      victory: battle.victory,
+      trophyChange: battle.trophyChange,
+      mode: battle.mode,
+      map: battle.map,
+      brawler: battle.brawler,
+      brawlerTrophies: battle.brawlerTrophies,
     });
     if (out.length >= 25) break;
   }
@@ -432,6 +450,29 @@ export function mapRotation(entries, now = Date.now()) {
   };
 }
 
+const BATTLELOG_TTL_SECONDS = 300;
+
+/**
+ * One member's recent battles, ready for the app to aggregate.
+ *
+ * The aggregation itself runs in the browser: a Worker invocation may only make
+ * so many subrequests (a batch of 28 battle logs is already over the free-plan
+ * ceiling), while 28 separate invocations — one per member — are each a single
+ * upstream call and the app caches them per tag.
+ */
+async function handleBattles(request, env, ctx, tag) {
+  return cached(request, ctx, BATTLELOG_TTL_SECONDS, async () => {
+    try {
+      const res = await upstream(env, `${tagPath("/players", tag)}/battlelog`);
+      if (!res.ok) return upstreamFailure(res.status, res.body);
+      const items = JSON.parse(res.body).items ?? [];
+      return json({ tag: bareTag(tag), battles: mapBattles(items, tag), sampledAt: Date.now() });
+    } catch (err) {
+      return upstreamUnavailable(err);
+    }
+  });
+}
+
 async function handleMaps(request, env, ctx) {
   return cached(request, ctx, META_TTL_SECONDS, async () => {
     try {
@@ -465,6 +506,9 @@ export default {
     if (path === "/club") return handleClub(request, env, ctx);
     if (path === "/ladder") return handleLadder(request, env, ctx);
     if (path === "/maps") return handleMaps(request, env, ctx);
+
+    const battles = /^\/battles\/([0-9A-Za-z]{3,16})$/.exec(path);
+    if (battles) return handleBattles(request, env, ctx, battles[1]);
 
     const player = /^\/player\/([0-9A-Za-z]{3,16})$/.exec(path);
     if (player) return handlePlayer(request, env, ctx, player[1]);
