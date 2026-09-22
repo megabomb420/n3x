@@ -1,0 +1,48 @@
+name: Deploy site to GitHub Pages
+
+# The app is a static build (no server functions left — everything comes from
+# the n3x-api Worker), so Pages serves it directly from `.vercel/output/static`
+# under the /n3x/ base path the build is given.
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: "24"
+          cache: npm
+      - run: npm ci
+      - run: npm run build:pages
+        env:
+          # The platform injects this on deploy; a repository build has to say it
+          # itself, or the auth UI turns on by default.
+          VITE_AUTH_ENABLED: "false"
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: .vercel/output/static
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4

@@ -15,140 +15,100 @@ function AboutPage() {
         <section>
           <h2 className="font-display text-2xl tracking-wide text-fg">Data / methodology</h2>
           <p className="mt-2">
-            This is an unofficial companion for Brawl Stars club{" "}
-            <span className="text-fg">'N3X</span> (<span className="text-fg">#2JYGUQ2P8</span>).
-            Club is the home tab: live roster, member profiles, and who joined or left. Meta is
-            the second tab — Ladder versus Ranked, never mixed.
+            This is an unofficial companion for Brawl Stars club <span className="text-fg">'N3X</span> (
+            <span className="text-fg">#2JYGUQ2P8</span>). Club is the home tab: live roster, member
+            profiles and who joined or left. Ladder shows the official global leaderboards, Maps the
+            live event rotation.
           </p>
         </section>
 
         <section>
-          <h3 className="font-medium text-fg">Club roster</h3>
+          <h3 className="font-medium text-fg">Where the numbers come from</h3>
           <p className="mt-2">
-            The member list is the public club page on{" "}
+            Everything is read from the official{" "}
+            <a className="underline" href="https://developer.brawlstars.com" target="_blank" rel="noreferrer">
+              Brawl Stars API
+            </a>{" "}
+            through this app's own Cloudflare Worker. The Worker holds the API key, caches responses
+            for a minute and is the only party that talks to Supercell — the browser never sees a key.
+            Official API keys are locked to the IP addresses that may use them, and a Worker has no
+            fixed address, so the Worker calls the API through RoyaleAPI's public proxy and that
+            proxy's published addresses are the ones on the key.
+          </p>
+        </section>
+
+        <section>
+          <h3 className="font-medium text-fg">Why the app no longer reads Brawl Time Ninja</h3>
+          <p className="mt-2">
+            Earlier builds scraped {" "}
             <a className="underline" href="https://brawltime.ninja/club/2JYGUQ2P8" target="_blank" rel="noreferrer">
               Brawl Time Ninja
             </a>
-            . Tapping a member loads that player’s public profile from the same site (trophies,
-            Ranked ELO / league, top brawlers, recent battles). No official API key is used or
-            needed — the public site was being treated as a bot, not missing a secret.
+            . That site answers every datacenter request with a Cloudflare challenge and sends no CORS
+            headers, so a hosted build can read neither its pages nor the browser-side Cube API they
+            feed. The measurement (Cloudflare Workers, GitHub/Azure runners, Vercel and the jina relay
+            all rejected) is recorded in the repository's <code className="text-fg">HANDOFF.md</code>.
+            The club, member, Ladder and Maps data above does not depend on it.
           </p>
         </section>
 
         <section>
           <h3 className="font-medium text-fg">Joined / left</h3>
           <p className="mt-2">
-            Brawl Stars does not publish a club activity feed. We keep one shared snapshot of
-            the last seen roster and compare it on each refresh. New tags are joins; missing
-            tags are leaves; a role change is recorded as a promotion or demotion. The first
-            successful save is a baseline — nothing is invented as a join or leave until a later
-            snapshot differs. If the snapshot cannot be stored, the live roster still shows and
-            the activity log says so.
+            Brawl Stars publishes no club activity feed. The Worker keeps one shared snapshot of the
+            last roster it saw and compares it on every refresh: new tags are joins, missing tags are
+            leaves, a changed role is a promotion or demotion. The first stored snapshot is a
+            baseline — nothing is invented as a join or leave until a later snapshot differs. The log
+            lives in the Worker's KV store, so it is the same for everyone who opens the app.
           </p>
         </section>
 
         <section>
-          <h3 className="font-medium text-fg">Sources (meta)</h3>
+          <h3 className="font-medium text-fg">Member profiles</h3>
+          <p className="mt-2">
+            Trophies, highest trophies, experience level, per-brawler trophies and the recent battle
+            list come from the official player and battle-log endpoints. Ranked Elo and the league
+            name are the fields the official API publishes for a player (a Ranked battle's
+            <code className="text-fg"> trophyChange</code> is the Elo delta, and its
+            <code className="text-fg"> brawlerTrophies</code> field carries the league index, not
+            trophies — the app labels those rows accordingly).
+          </p>
+        </section>
+
+        <section>
+          <h3 className="font-medium text-fg">Ladder and Maps</h3>
           <ul className="mt-2 list-disc space-y-1 pl-5">
             <li>
-              <span className="text-fg">Ladder & Ranked stats:</span> Brawl Time Ninja analytics cube
-              (
-              <a className="underline" href="https://brawltime.ninja" target="_blank" rel="noreferrer">
-                brawltime.ninja
-              </a>
-              ). Ranked is <code className="text-fg">powerplay=1</code> battles; Ladder is{" "}
-              <code className="text-fg">powerplay=0</code>. On Ranked the cube’s{" "}
-              <code className="text-fg">trophyRange</code> is league rank (Bronze I–Pro), not
-              brawler trophies. Ladder still uses 100-trophy buckets.
+              <span className="text-fg">Ladder:</span> the official global leaderboards — the top 200
+              players or clubs, with trophies and club names, exactly as the API returns them. Rank
+              order is never re-sorted.
             </li>
             <li>
-              <span className="text-fg">Brawlers, maps, art:</span>{" "}
+              <span className="text-fg">Maps:</span> the live event rotation — what is running now and
+              what comes next, with mode and map names. Counts of games per map are not published by
+              the API, so the app does not show any.
+            </li>
+            <li>
+              <span className="text-fg">Brawler and map art:</span>{" "}
               <a className="underline" href="https://brawlapi.com" target="_blank" rel="noreferrer">
                 BrawlAPI
               </a>{" "}
-              +{" "}
+              and the{" "}
               <a className="underline" href="https://cdn.brawlify.com" target="_blank" rel="noreferrer">
                 Brawlify CDN
-              </a>
-              .
-            </li>
-            <li>
-              <span className="text-fg">Creator lists:</span> public YouTube RSS for SpenLC, Ash,
-              KairosTime, and CryingMan. Each channel’s latest video whose title is a tier list
-              or ranking, with the publish date. Placements inside the video are not transcribed.
-            </li>
-            <li>
-              <span className="text-fg">Ranked discussion:</span> public RSS of{" "}
-              <a
-                className="underline"
-                href="https://www.reddit.com/r/BrawlStarsCompetitive"
-                target="_blank"
-                rel="noreferrer"
-              >
-                r/BrawlStarsCompetitive
-              </a>
-              . Posts about Ranked, draft, meta, and tier lists, with the publish date. We do
-              not scrape comment rankings or invent a community S–D board.
-            </li>
-            <li>
-              <span className="text-fg">Community vote:</span> Brawl Time Ninja survey cube for the
-              current season. Last-vote time is the newest ballot, not a scrape of their visual
-              S–D board.
+              </a>{" "}
+              (a static catalog, loaded by the browser directly).
             </li>
           </ul>
-          <p className="mt-2">None of those projects, nor Supercell, endorse this app.</p>
         </section>
 
         <section>
-          <h3 className="font-medium text-fg">Ladder trophies vs Ranked ELO</h3>
+          <h3 className="font-medium text-fg">Freshness</h3>
           <p className="mt-2">
-            Ladder filters by brawler trophies (0–999, 1000+, 1500+, 2000+). Ranked does not —
-            those battles do not move brawler trophies. Ranked filters by league floor (Gold+,
-            Diamond+, Mythic+, Legendary+, Masters+), which is the cube’s rank index 1–22
-            (Bronze I through Pro). ELO numbers on the chips are Ranked 2.0 league floors, not a
-            raw ELO field. A member’s profile Ranked line is that player’s public ELO / league
-            from Brawl Time Ninja.
-          </p>
-        </section>
-
-        <section>
-          <h3 className="font-medium text-fg">Freshness & sample</h3>
-          <p className="mt-2">
-            Club roster refreshes about every 90 seconds while the Club tab is open. Meta lists
-            store source, fetch time, last cube refresh, sample size, and active filters. Tap
-            the “Updated …” chip on Meta or Maps to inspect them. Cached snapshots are used if
-            the network fails; anything older than 30 minutes is labelled stale. Numbers are
-            never invented.
-          </p>
-        </section>
-
-        <section>
-          <h3 className="font-medium text-fg">Adjusted win rate</h3>
-          <p className="mt-2">
-            Adjusted WR is Brawl Time Ninja’s Bayesian average: small samples are pulled toward a
-            trophy-aware prior (~1,583 pseudo-battles). We use it as the main quality signal instead
-            of raw win rate.
-          </p>
-        </section>
-
-        <section>
-          <h3 className="font-medium text-fg">Tier score</h3>
-          <p className="mt-2">
-            Inside the current filter, each brawler gets a ranking quality that shrinks adjusted
-            WR toward the group average with 800 pseudo-battles, then{" "}
-            <code className="text-fg">0.70 × z(quality) + 0.30 × z(adj WR × log10(picks + 10))</code>.
-            That stops a 200-game spike from outranking a million-battle 57%. Use rate is not in
-            the score — popularity has its own “Most used” strip. Tiers S–D are cut from that
-            score’s distribution, not from fixed win-rate thresholds. The adjusted WR you see is
-            still Brawl Time Ninja’s number.
-          </p>
-        </section>
-
-        <section>
-          <h3 className="font-medium text-fg">Confidence</h3>
-          <p className="mt-2">
-            HIGH ≥ 8,000 battles, MEDIUM ≥ 1,200, otherwise LOW. LOW samples cannot sit in S or A.
-            Under 80 battles they are capped at C.
+            The Worker caches club data for 45 seconds and player data for a minute; the browser keeps
+            the last good payload and shows it, labelled, if the network fails. Club re-checks about
+            every 90 seconds while the tab is open, Ladder every 5 minutes, Maps every 10. Nothing is
+            invented to fill a gap: a failed request shows the reason it failed.
           </p>
         </section>
 
@@ -156,33 +116,22 @@ function AboutPage() {
           <h3 className="font-medium text-fg">Known limits</h3>
           <ul className="mt-2 list-disc space-y-1 pl-5">
             <li>
-              Joins and leaves only exist after a stored snapshot. We cannot reconstruct history
-              from before this app started watching.
+              Joins and leaves only exist after a stored snapshot; history from before this app started
+              watching cannot be reconstructed.
             </li>
             <li>
-              Ranked filters by league / ELO floor (Gold+, Diamond+, …), mapped from cube rank
-              index 1–22 (Bronze I through Pro). Raw ELO is not published — we do not invent a
-              per-point ELO slider.
-            </li>
-            <li>Ban rate is not published. We do not estimate it from pick rate.</li>
-            <li>
-              BrawlAPI’s event rotation feed is empty, so “active maps” are maps with battles in the
-              last ~90 minutes.
+              The official battle log lags behind by up to about half an hour and returns only the most
+              recent battles, so a member page can miss very recent games.
             </li>
             <li>
-              Creator lists only see the last ~15 uploads on each channel’s public RSS. If someone
-              posts a list further back, it will not appear until it is in that window.
+              Ranked win-rate and pick-rate boards (per map, per brawler, filtered by league) existed
+              only in Brawl Time Ninja's analytics cube and have no official equivalent — they are not
+              part of this app rather than replaced with invented numbers.
             </li>
             <li>
-              Ranked talk only sees the last ~25 posts on r/BrawlStarsCompetitive’s public RSS.
-              We do not pull scores, flairs, or older threads, and we do not invent a community
-              S–D board from comments.
+              Ban rates are not published anywhere official, so they are not estimated from pick rates.
             </li>
-            <li>We do not invent a creator’s S–D ranking from memory or from an old screenshot.</li>
-            <li>
-              A tiny server call fetches Brawl Time Ninja’s public cube token because that token
-              endpoint has no CORS headers. Stats themselves load in the browser from the cube.
-            </li>
+            <li>The club's own roster is the only club the app tracks.</li>
           </ul>
         </section>
 
@@ -197,7 +146,7 @@ function AboutPage() {
               target="_blank"
               rel="noreferrer"
             >
-              Supercell’s Fan Content Policy
+              Supercell's Fan Content Policy
             </a>
             .
           </p>

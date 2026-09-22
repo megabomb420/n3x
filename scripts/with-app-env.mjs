@@ -112,13 +112,15 @@ function main(argv) {
   }
   const env = mergeAppEnv(readAppEnv(projectRoot()), process.env);
   // Windows resolves npm's `node_modules/.bin/*.cmd` shims (the `vite` this
-  // script is always asked to run) only through a shell; spawning the bare
-  // command name there fails with ENOENT.
-  const child = spawn(command, args, {
-    stdio: "inherit",
-    env,
-    shell: process.platform === "win32",
-  });
+  // script is always asked to run) only through a shell, and a shell takes one
+  // command line rather than an argv array.
+  const child =
+    process.platform === "win32"
+      ? spawn(
+          [command, ...args].map((value) => (/\s/.test(value) ? `"${value}"` : value)).join(" "),
+          { stdio: "inherit", env, shell: true },
+        )
+      : spawn(command, args, { stdio: "inherit", env });
   // The dev server is long-running and is stopped by signalling this wrapper.
   for (const signal of ["SIGINT", "SIGTERM", "SIGHUP"]) {
     process.on(signal, () => child.kill(signal));

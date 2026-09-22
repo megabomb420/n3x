@@ -1,7 +1,5 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { useEffect, useState, type ReactNode } from "react";
-import { useFilters } from "@/store/filters";
-import { resolveCubeToken } from "@/lib/meta/token";
+import { useState, type ReactNode } from "react";
 
 export function AppProviders({ children }: { children: ReactNode }) {
   const [client] = useState(
@@ -17,9 +15,5 @@ export function AppProviders({ children }: { children: ReactNode }) {
         },
       }),
   );
-  useEffect(() => {
-    void useFilters.persist.rehydrate();
-    void resolveCubeToken().catch(() => undefined);
-  }, []);
   return <QueryClientProvider client={client}>{children}</QueryClientProvider>;
 }

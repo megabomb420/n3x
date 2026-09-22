@@ -147,9 +147,9 @@ export function diffRoster(previous, next) {
 }
 
 /** Official player payload → the app's PlayerProfile shape. */
-export function mapPlayer(raw, clubRole = null) {
+export function mapPlayer(raw, clubRole = null, clubTag = "") {
   const iconId = num(raw?.icon?.id, NaN);
-  const clubTag = bareTag(raw?.club?.tag);
+  const tag = bareTag(raw?.club?.tag);
   const brawlers = Object.values(raw?.brawlers ?? {}).map((brawler) => ({
     id: num(brawler?.id),
     slug: String(brawler?.name ?? "").toLowerCase(),
@@ -181,8 +181,9 @@ export function mapPlayer(raw, clubRole = null) {
     soloVictories: num(raw?.soloVictories),
     duoVictories: num(raw?.duoVictories),
     fameTierName: typeof raw?.fameTierName === "string" ? raw.fameTierName : null,
-    clubTag: clubTag || null,
+    clubTag: tag || null,
     clubName: raw?.club ? String(raw.club.name ?? "") || null : null,
+    inClub: Boolean(tag) && tag === bareTag(clubTag),
     clubRole,
     brawlers,
     fetchedAt: Date.now(),
@@ -366,7 +367,7 @@ async function handlePlayer(request, env, ctx, tag) {
         role = member?.role ?? null;
       }
       const battles = log.ok ? mapBattles(JSON.parse(log.body).items, tag) : [];
-      return json({ ...mapPlayer(JSON.parse(profile.body), role), battles });
+      return json({ ...mapPlayer(JSON.parse(profile.body), role, env.CLUB_TAG), battles });
     } catch (err) {
       return upstreamUnavailable(err);
     }

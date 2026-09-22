@@ -22,10 +22,31 @@ Measured, not assumed (all from this machine):
 - New backend: `worker/` → deployed as `n3x-api` (`https://n3x-api.whip-blanket.workers.dev`), KV namespace `n3x-relay` reused as the roster-snapshot / join-leave store. Surface: `GET /club`, `GET /player/<tag>`, `GET /ladder?type=players|clubs`, `GET /maps`, `GET /health`. It maps upstream payloads into the app's existing `ClubLive` / `PlayerProfile` shapes, so `src/lib/club/types.ts` stays the contract.
 - Requires one secret the owner creates: `BRAWL_API_KEY` (`developer.brawlstars.com`), with RoyaleAPI's proxy IPs whitelisted on it. Set it with `npx wrangler secret put BRAWL_API_KEY --config worker/wrangler.jsonc` (the key itself belongs in the Supercell portal and in Cloudflare, never in git). Until it is set, every data endpoint answers `503 upstream-denied` — honest, not a fake roster.
 - **Feature consequence:** BTN's Cube aggregates (the Meta tab's win/pick rates and league-floor filters) exist nowhere else and are unreachable from a hosted app. Meta becomes the official leaderboards (`/rankings/...`), Maps becomes the live rotation (`/events/rotation`). Club, member pages (including Ranked Elo chips) and the join/leave log stay intact.
-- The app half of that rewrite (dropping `src/lib/http/btn-client.ts`, `outbound.ts`, `src/lib/meta/token.ts`, `cube.ts` and the BTN parsers in favour of the Worker client) is **not done yet** — the old server-function path is untouched in this commit.
+- The app half of that rewrite is done — see the next section.
 
 
 ## Product
+
+### 2026-09-22 (night): the app is off BTN and hosted
+
+The client no longer knows Brawl Time Ninja exists.
+
+- `src/lib/api/client.ts` is the only data path: `apiGet()` against the `n3x-api` Worker, with honest messages per failure (`upstream-denied` → "Data source is not configured yet (the backend is missing its API key)").
+- `src/lib/club/queries.ts` is a thin fetch plus the 45s club / 60s player caches and the last-good-payload fallback; the pure display helpers moved to `src/lib/club/format.ts`.
+- Deleted with the BTN path: `src/lib/http/{btn-client,outbound}.ts`, `src/lib/club/parse.ts`, `src/lib/meta/{cube,token,queries,creators,reddit,seasons,scoring}.ts`, `src/store/filters.ts`, and the screens/routes that fed on Cube aggregates (Meta, Brawlers, Lists, map detail, filter bar, search overlay, tier badges, creator/reddit strips).
+- New screens: **Ladder** (`GET /ladder?type=players|clubs`, official top-200, order preserved) and **Maps** (`GET /maps`, the live event rotation). Nav is Club / Ladder / Maps; `src/routes/about.tsx` documents the new sources and the limits.
+- The join/leave log now lives entirely in the Worker's KV store, so it is shared and survives a closed browser.
+- `scripts/worker-mapping.test.mjs` pins the mapping layer (club, player with Ranked fields, battle log with `soloRanked`, leaderboards, roster diff, tag normalisation) against documented payload shapes — 6 tests, no network.
+
+### Hosting
+
+- Prerendering is on for `/`, `/ladder`, `/maps`, `/about`: the nitro/vercel preset builds the document inside its function, so a static host would otherwise have no `index.html`. Data still arrives on the client after hydration; member deep links land on each host's 404 fallback.
+- The router takes its `basepath` from `import.meta.env.BASE_URL`, so the same source serves `/` (Cloudflare Pages, Vercel, the Worker) and `/n3x/` (GitHub Pages project site).
+- `npm run build:pages` builds with `--base=/n3x/` and runs `scripts/static-fallback.mjs`, which copies the document to `404.html` and adds `.nojekyll`.
+- GitHub Pages is enabled on the repository (`build_type: workflow`); `.github/workflows/pages.yml` builds and deploys on every push to `main`. Cloudflare Pages project `n3x` serves the root-based build at https://n3x-dk5.pages.dev.
+- `scripts/with-app-env.mjs` now spawns npm's `.cmd` shims through a shell on Windows (with the command line built as one string, so Node's DEP0190 stays quiet), which is what makes `npm run dev`/`build` work outside the Linux sandbox.
+
+Verified so far: `tsc --noEmit` clean; the 6 mapping tests pass; the dev server and the deployed Pages bundle both call the Worker (browser shows `GET /player/2JYGUQ2P8` → 503 → the honest "missing its API key" state, with the Club / Ladder / Maps nav). **Not yet verified: real data end to end — that needs `BRAWL_API_KEY`.**
 
 Unofficial companion for Brawl Stars club **'N3X**, tag `#2JYGUQ2P8`. Not affiliated with Supercell or Brawl Time Ninja.
 

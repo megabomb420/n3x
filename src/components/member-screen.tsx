@@ -2,7 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
 import { ChevronLeft } from "lucide-react";
 import { loadClubPlayer } from "@/lib/club/queries";
-import { nameColorToCss, roleLabel } from "@/lib/club/parse";
+import { nameColorToCss, roleLabel } from "@/lib/club/format";
 import { CLUB_TAG } from "@/lib/club/types";
 import { loadCatalog } from "@/lib/meta/brawlapi";
 import { displayBrawlerName, titleCaseMode } from "@/lib/meta/names";

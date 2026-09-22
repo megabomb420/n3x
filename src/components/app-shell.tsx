@@ -1,31 +1,32 @@
 import { Link, useRouterState } from "@tanstack/react-router";
 import { Map, Swords, Users } from "lucide-react";
-import { useEffect, useRef, useState, type ReactNode } from "react";
+import { useEffect, useRef, type ReactNode } from "react";
 import { cn } from "@/lib/utils";
-import { SearchButton, SearchOverlay } from "./search-overlay";
-import { ConnectedQueueSwitch } from "./queue-switch";
 import { ClubLogo } from "./club-logo";
 
+/**
+ * The app frame: fixed header, a scrolling main column and three tabs.
+ *
+ * The tabs follow what a hosted build can actually source — Club (official club
+ * and player endpoints), Ladder (official leaderboards) and Maps (the live
+ * event rotation). The old Meta tab needed Brawl Time Ninja's Cube aggregates,
+ * which no hosted build can reach; see HANDOFF.md.
+ */
 export function AppShell({
   title,
   children,
   headerRight,
-  showQueue = false,
-  showSearch = false,
 }: {
   title?: string;
   children: ReactNode;
   headerRight?: ReactNode;
-  showQueue?: boolean;
-  showSearch?: boolean;
 }) {
-  const [searchOpen, setSearchOpen] = useState(false);
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const mainRef = useRef<HTMLElement>(null);
 
   useEffect(() => {
     if (import.meta.env.PROD && "serviceWorker" in navigator) {
-      void navigator.serviceWorker.register("/sw.js").catch(() => undefined);
+      void navigator.serviceWorker.register(`${import.meta.env.BASE_URL}sw.js`).catch(() => undefined);
     }
   }, []);
 
@@ -34,11 +35,7 @@ export function AppShell({
   }, [pathname]);
 
   const clubActive = pathname === "/" || pathname.startsWith("/m/");
-  const metaActive =
-    pathname.startsWith("/meta") ||
-    pathname.startsWith("/lists") ||
-    pathname.startsWith("/brawlers") ||
-    pathname.startsWith("/about");
+  const ladderActive = pathname.startsWith("/ladder") || pathname.startsWith("/about");
   const mapsActive = pathname.startsWith("/maps");
 
   return (
@@ -57,13 +54,7 @@ export function AppShell({
             </h1>
           </div>
           {headerRight}
-          {showSearch ? <SearchButton onOpen={() => setSearchOpen(true)} /> : null}
         </div>
-        {showQueue ? (
-          <div className="px-3 pb-2 pt-1">
-            <ConnectedQueueSwitch />
-          </div>
-        ) : null}
       </header>
 
       <main ref={mainRef} className="min-h-0 flex-1 overflow-y-auto overscroll-contain pb-3">
@@ -83,14 +74,14 @@ export function AppShell({
             Club
           </Link>
           <Link
-            to="/meta"
+            to="/ladder"
             className={cn(
               "flex h-11 flex-col items-center justify-center gap-0.5 text-[11px] font-medium",
-              metaActive ? "text-fg" : "text-subtle",
+              ladderActive ? "text-fg" : "text-subtle",
             )}
           >
-            <Swords className="size-4" strokeWidth={metaActive ? 2.2 : 1.7} />
-            Meta
+            <Swords className="size-4" strokeWidth={ladderActive ? 2.2 : 1.7} />
+            Ladder
           </Link>
           <Link
             to="/maps"
@@ -104,7 +95,6 @@ export function AppShell({
           </Link>
         </div>
       </nav>
-      <SearchOverlay open={searchOpen} onClose={() => setSearchOpen(false)} />
     </div>
   );
 }

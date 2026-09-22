@@ -11,15 +11,9 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AboutRouteImport } from './routes/about'
-import { Route as BrawlersRouteImport } from './routes/brawlers'
-import { Route as ListsRouteImport } from './routes/lists'
+import { Route as LadderRouteImport } from './routes/ladder'
 import { Route as MapsRouteImport } from './routes/maps'
-import { Route as MetaRouteImport } from './routes/meta'
-import { Route as BrawlersIndexRouteImport } from './routes/brawlers.index'
-import { Route as BrawlersBrawlerIdRouteImport } from './routes/brawlers.$brawlerId'
 import { Route as MTagRouteImport } from './routes/m.$tag'
-import { Route as MapsIndexRouteImport } from './routes/maps.index'
-import { Route as MapsModeMapRouteImport } from './routes/maps.$mode.$map'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -31,14 +25,9 @@ const AboutRoute = AboutRouteImport.update({
   path: '/about',
   getParentRoute: () => rootRouteImport,
 } as any)
-const BrawlersRoute = BrawlersRouteImport.update({
-  id: '/brawlers',
-  path: '/brawlers',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ListsRoute = ListsRouteImport.update({
-  id: '/lists',
-  path: '/lists',
+const LadderRoute = LadderRouteImport.update({
+  id: '/ladder',
+  path: '/ladder',
   getParentRoute: () => rootRouteImport,
 } as any)
 const MapsRoute = MapsRouteImport.update({
@@ -46,122 +35,47 @@ const MapsRoute = MapsRouteImport.update({
   path: '/maps',
   getParentRoute: () => rootRouteImport,
 } as any)
-const MetaRoute = MetaRouteImport.update({
-  id: '/meta',
-  path: '/meta',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const BrawlersIndexRoute = BrawlersIndexRouteImport.update({
-  id: '/',
-  path: '/',
-  getParentRoute: () => BrawlersRoute,
-} as any)
-const BrawlersBrawlerIdRoute = BrawlersBrawlerIdRouteImport.update({
-  id: '/$brawlerId',
-  path: '/$brawlerId',
-  getParentRoute: () => BrawlersRoute,
-} as any)
 const MTagRoute = MTagRouteImport.update({
   id: '/m/$tag',
   path: '/m/$tag',
   getParentRoute: () => rootRouteImport,
 } as any)
-const MapsIndexRoute = MapsIndexRouteImport.update({
-  id: '/',
-  path: '/',
-  getParentRoute: () => MapsRoute,
-} as any)
-const MapsModeMapRoute = MapsModeMapRouteImport.update({
-  id: '/$mode/$map',
-  path: '/$mode/$map',
-  getParentRoute: () => MapsRoute,
-} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/about': typeof AboutRoute
-  '/brawlers': typeof BrawlersRouteWithChildren
-  '/lists': typeof ListsRoute
-  '/maps': typeof MapsRouteWithChildren
-  '/meta': typeof MetaRoute
-  '/brawlers/$brawlerId': typeof BrawlersBrawlerIdRoute
+  '/ladder': typeof LadderRoute
+  '/maps': typeof MapsRoute
   '/m/$tag': typeof MTagRoute
-  '/brawlers/': typeof BrawlersIndexRoute
-  '/maps/': typeof MapsIndexRoute
-  '/maps/$mode/$map': typeof MapsModeMapRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/about': typeof AboutRoute
-  '/lists': typeof ListsRoute
-  '/meta': typeof MetaRoute
-  '/brawlers/$brawlerId': typeof BrawlersBrawlerIdRoute
+  '/ladder': typeof LadderRoute
+  '/maps': typeof MapsRoute
   '/m/$tag': typeof MTagRoute
-  '/brawlers': typeof BrawlersIndexRoute
-  '/maps': typeof MapsIndexRoute
-  '/maps/$mode/$map': typeof MapsModeMapRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/about': typeof AboutRoute
-  '/brawlers': typeof BrawlersRouteWithChildren
-  '/lists': typeof ListsRoute
-  '/maps': typeof MapsRouteWithChildren
-  '/meta': typeof MetaRoute
-  '/brawlers/$brawlerId': typeof BrawlersBrawlerIdRoute
+  '/ladder': typeof LadderRoute
+  '/maps': typeof MapsRoute
   '/m/$tag': typeof MTagRoute
-  '/brawlers/': typeof BrawlersIndexRoute
-  '/maps/': typeof MapsIndexRoute
-  '/maps/$mode/$map': typeof MapsModeMapRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths:
-    | '/'
-    | '/about'
-    | '/brawlers'
-    | '/lists'
-    | '/maps'
-    | '/meta'
-    | '/brawlers/$brawlerId'
-    | '/m/$tag'
-    | '/brawlers/'
-    | '/maps/'
-    | '/maps/$mode/$map'
+  fullPaths: '/' | '/about' | '/ladder' | '/maps' | '/m/$tag'
   fileRoutesByTo: FileRoutesByTo
-  to:
-    | '/'
-    | '/about'
-    | '/lists'
-    | '/meta'
-    | '/brawlers/$brawlerId'
-    | '/m/$tag'
-    | '/brawlers'
-    | '/maps'
-    | '/maps/$mode/$map'
-  id:
-    | '__root__'
-    | '/'
-    | '/about'
-    | '/brawlers'
-    | '/lists'
-    | '/maps'
-    | '/meta'
-    | '/brawlers/$brawlerId'
-    | '/m/$tag'
-    | '/brawlers/'
-    | '/maps/'
-    | '/maps/$mode/$map'
+  to: '/' | '/about' | '/ladder' | '/maps' | '/m/$tag'
+  id: '__root__' | '/' | '/about' | '/ladder' | '/maps' | '/m/$tag'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AboutRoute: typeof AboutRoute
-  BrawlersRoute: typeof BrawlersRouteWithChildren
-  ListsRoute: typeof ListsRoute
-  MapsRoute: typeof MapsRouteWithChildren
-  MetaRoute: typeof MetaRoute
+  LadderRoute: typeof LadderRoute
+  MapsRoute: typeof MapsRoute
   MTagRoute: typeof MTagRoute
 }
 
@@ -181,18 +95,11 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AboutRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/brawlers': {
-      id: '/brawlers'
-      path: '/brawlers'
-      fullPath: '/brawlers'
-      preLoaderRoute: typeof BrawlersRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/lists': {
-      id: '/lists'
-      path: '/lists'
-      fullPath: '/lists'
-      preLoaderRoute: typeof ListsRouteImport
+    '/ladder': {
+      id: '/ladder'
+      path: '/ladder'
+      fullPath: '/ladder'
+      preLoaderRoute: typeof LadderRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/maps': {
@@ -202,27 +109,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof MapsRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/meta': {
-      id: '/meta'
-      path: '/meta'
-      fullPath: '/meta'
-      preLoaderRoute: typeof MetaRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/brawlers/': {
-      id: '/brawlers/'
-      path: '/'
-      fullPath: '/brawlers/'
-      preLoaderRoute: typeof BrawlersIndexRouteImport
-      parentRoute: typeof BrawlersRoute
-    }
-    '/brawlers/$brawlerId': {
-      id: '/brawlers/$brawlerId'
-      path: '/$brawlerId'
-      fullPath: '/brawlers/$brawlerId'
-      preLoaderRoute: typeof BrawlersBrawlerIdRouteImport
-      parentRoute: typeof BrawlersRoute
-    }
     '/m/$tag': {
       id: '/m/$tag'
       path: '/m/$tag'
@@ -230,56 +116,14 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof MTagRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/maps/': {
-      id: '/maps/'
-      path: '/'
-      fullPath: '/maps/'
-      preLoaderRoute: typeof MapsIndexRouteImport
-      parentRoute: typeof MapsRoute
-    }
-    '/maps/$mode/$map': {
-      id: '/maps/$mode/$map'
-      path: '/$mode/$map'
-      fullPath: '/maps/$mode/$map'
-      preLoaderRoute: typeof MapsModeMapRouteImport
-      parentRoute: typeof MapsRoute
-    }
   }
 }
-
-interface BrawlersRouteChildren {
-  BrawlersBrawlerIdRoute: typeof BrawlersBrawlerIdRoute
-  BrawlersIndexRoute: typeof BrawlersIndexRoute
-}
-
-const BrawlersRouteChildren: BrawlersRouteChildren = {
-  BrawlersBrawlerIdRoute: BrawlersBrawlerIdRoute,
-  BrawlersIndexRoute: BrawlersIndexRoute,
-}
-
-const BrawlersRouteWithChildren = BrawlersRoute._addFileChildren(
-  BrawlersRouteChildren,
-)
-
-interface MapsRouteChildren {
-  MapsIndexRoute: typeof MapsIndexRoute
-  MapsModeMapRoute: typeof MapsModeMapRoute
-}
-
-const MapsRouteChildren: MapsRouteChildren = {
-  MapsIndexRoute: MapsIndexRoute,
-  MapsModeMapRoute: MapsModeMapRoute,
-}
-
-const MapsRouteWithChildren = MapsRoute._addFileChildren(MapsRouteChildren)
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AboutRoute: AboutRoute,
-  BrawlersRoute: BrawlersRouteWithChildren,
-  ListsRoute: ListsRoute,
-  MapsRoute: MapsRouteWithChildren,
-  MetaRoute: MetaRoute,
+  LadderRoute: LadderRoute,
+  MapsRoute: MapsRoute,
   MTagRoute: MTagRoute,
 }
 export const routeTree = rootRouteImport

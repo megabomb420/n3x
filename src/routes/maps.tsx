@@ -1,7 +1,13 @@
-import { createFileRoute, Outlet } from "@tanstack/react-router";
+import { createFileRoute } from "@tanstack/react-router";
+import { AppShell } from "@/components/app-shell";
+import { RotationScreen } from "@/components/rotation-screen";
 
-export const Route = createFileRoute("/maps")({ component: MapsLayout });
+export const Route = createFileRoute("/maps")({ component: MapsPage });
 
-function MapsLayout() {
-  return <Outlet />;
+function MapsPage() {
+  return (
+    <AppShell title="Maps">
+      <RotationScreen />
+    </AppShell>
+  );
 }

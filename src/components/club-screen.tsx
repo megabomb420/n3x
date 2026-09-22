@@ -3,7 +3,7 @@ import { Link } from "@tanstack/react-router";
 import { Clock, LogIn, LogOut, Search, Shield } from "lucide-react";
 import { useMemo, useState } from "react";
 import { loadClubHome } from "@/lib/club/queries";
-import { nameColorToCss, roleLabel } from "@/lib/club/parse";
+import { nameColorToCss, roleLabel } from "@/lib/club/format";
 import type { ClubEvent, ClubMember } from "@/lib/club/types";
 import { formatRelative, formatTrophies } from "@/lib/meta/format";
 import { useOnline } from "@/hooks/use-online";

@@ -178,7 +178,16 @@ export default defineConfig(({ command, isPreview }) => ({
     // PWA head + ?install=1 tutorial page; runs before Start/Nitro.
     grokPwaPlugin(),
     tailwindcss(),
-    tanstackStart(),
+    tanstackStart({
+      // A static host (GitHub Pages, Cloudflare Pages) has no request-time
+      // renderer: the nitro/vercel preset builds the document inside its
+      // function, so nothing lands in `static/index.html`. Prerendering the
+      // shell routes writes real HTML for them, and data still arrives on the
+      // client (the queries run after hydration). Member pages are reached
+      // through each host's 404 fallback.
+      prerender: { enabled: true },
+      pages: [{ path: "/" }, { path: "/ladder" }, { path: "/maps" }, { path: "/about" }],
+    }),
     ...(command === "build" || isPreview
       ? [
           nitro({

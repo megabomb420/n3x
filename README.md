@@ -10,19 +10,39 @@ Live public build: https://n3x.grok.me/
 
 Not affiliated with Supercell or Brawl Time Ninja.
 
-## Known production bug
+## Status (2026-09-22)
 
-On the **published** site, club and meta both fail:
+The app no longer reads Brawl Time Ninja. That site answers every datacenter
+request with a Cloudflare challenge — measured from Cloudflare Workers,
+GitHub/Azure runners, Vercel and the `r.jina.ai` relay alike (only `/robots.txt`
+passes) — and sends no CORS headers, so no hosted build can read it from the
+server *or* the browser. The evidence is in `HANDOFF.md`.
 
-- Club: `Source unavailable (403)`
-- Cube token: `Token source unavailable (403)`
+Data now comes from the **official Brawl Stars API** through this repository's
+own Cloudflare Worker (`worker/`, deployed as `n3x-api`), which also replaces the
+old Postgres join/leave store with Workers KV:
 
-Root cause, measured 2026-09-22: `brawltime.ninja` returns `403 cf-mitigated: challenge` to **every** datacenter egress — Cloudflare Workers, GitHub Actions/Azure, `r.jina.ai` and Vercel alike (only `/robots.txt` passes) — and sends no CORS headers, so a hosted app cannot read it from the server *or* the browser. The published build is also stale: `/btn-src/*` 404s although the current source builds that rewrite.
+- `GET /club` — roster plus the join/leave log (KV snapshot diff)
+- `GET /player/<tag>` — profile, brawlers, Ranked Elo, recent battles
+- `GET /ladder?type=players|clubs` — official leaderboards
+- `GET /maps` — the live event rotation
+- `GET /health` — what the deployment can reach
 
-The replacement backend is `worker/` (deployed as `n3x-api`), built on the **official** Brawl Stars API (`api.brawlstars.com`, reached through RoyaleAPI's public proxy because official keys are IP-locked) with the join/leave log in Workers KV. It needs the owner's `BRAWL_API_KEY` secret; see `HANDOFF.md` for the current state, the exact commands and the feature consequences (BTN's Cube aggregates are unreachable from any host).
+One owner step remains: create an API key at
+[developer.brawlstars.com](https://developer.brawlstars.com), whitelist
+RoyaleAPI's published proxy addresses (official keys are locked to IPs and a
+Worker has no fixed one), then run
+`npx wrangler secret put BRAWL_API_KEY --config worker/wrangler.jsonc`.
+Until it is set, every data endpoint answers `503 upstream-denied` and the app
+says exactly that instead of showing numbers.
 
-See `worker/index.js` for the API surface and `src/lib/club/queries.ts` for the still-current BTN path.
+Hosting: `.github/workflows/pages.yml` publishes the static build to GitHub
+Pages under `/n3x/`, and the Cloudflare Pages project `n3x` serves the
+root-based build. Both are prerendered shells — data always arrives on the
+client from the Worker.
 
 ## Stack
 
-TanStack Start, React 19, Tailwind v4. Club join/leave diffs are stored in Postgres (Neon when `DATABASE_URL` is set, otherwise embedded PGLite in dev only).
+TanStack Start, React 19, Tailwind v4, deployed as a prerendered static build.
+The backend is a Cloudflare Worker (`worker/`) with Workers KV for the club
+snapshot and join/leave log; PGlite/Neon are no longer used by the app.
