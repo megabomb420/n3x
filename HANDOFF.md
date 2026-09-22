@@ -46,7 +46,9 @@ The client no longer knows Brawl Time Ninja exists.
 - GitHub Pages is enabled on the repository (`build_type: workflow`); `.github/workflows/pages.yml` builds and deploys on every push to `main`. Cloudflare Pages project `n3x` serves the root-based build at https://n3x-dk5.pages.dev.
 - `scripts/with-app-env.mjs` now spawns npm's `.cmd` shims through a shell on Windows (with the command line built as one string, so Node's DEP0190 stays quiet), which is what makes `npm run dev`/`build` work outside the Linux sandbox.
 
-Verified so far: `tsc --noEmit` clean; the 6 mapping tests pass; the dev server and the deployed Pages bundle both call the Worker (browser shows `GET /player/2JYGUQ2P8` → 503 → the honest "missing its API key" state, with the Club / Ladder / Maps nav). **Not yet verified: real data end to end — that needs `BRAWL_API_KEY`.**
+Verified so far: `tsc --noEmit` clean; the 6 mapping tests pass; the dev server and both static hosts call the Worker. Cloudflare Pages (https://n3x-dk5.pages.dev) serves the prerendered shell at `/`, `/ladder` and `/maps`, and a member deep link (`/m/2JYGUQ2P8`) lands on the `404.html` fallback and boots the router. Every club/player/ladder request answers 503 with the honest "Data source is not configured yet (the backend is missing its API key)" state and the Club / Ladder / Maps nav. **Not yet verified: real data end to end — that needs `BRAWL_API_KEY`.**
+
+`npm test` on this machine: 55 TypeScript tests pass; of the 201 `scripts/**` tests, 18 fail for reasons that predate this work — they assert on the Grok sandbox's `.grok/skills/**` and `.grok/app-env.json`, which are not part of the repository, and two need symlink privileges Windows does not grant by default. Before this commit the same command silently ran **zero** of them under cmd; the glob is now double-quoted so both shells expand it.
 
 Unofficial companion for Brawl Stars club **'N3X**, tag `#2JYGUQ2P8`. Not affiliated with Supercell or Brawl Time Ninja.
 
