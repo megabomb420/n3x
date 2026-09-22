@@ -301,14 +301,17 @@ async function readEvents(env) {
 /** Store the roster snapshot, append whatever changed, return the visible log. */
 async function recordRoster(env, club) {
   const nextSnap = snapshotOf(club.members);
+  const nextJson = JSON.stringify(nextSnap);
   const stored = await env.DATA.get("snapshot:club");
-  const previous = stored ? JSON.parse(stored) : null;
-  const base = { events: [], baseline: false, tracking: true };
-  if (!previous) {
-    await env.DATA.put("snapshot:club", JSON.stringify(nextSnap));
-    return { ...base, baseline: true };
+  if (!stored) {
+    await env.DATA.put("snapshot:club", nextJson);
+    return { events: [], baseline: true, tracking: true };
   }
-  const changes = diffRoster(previous, nextSnap);
+  // KV's free tier allows 1000 writes/day; an unchanged roster must not spend one.
+  if (stored === nextJson) {
+    return { events: await readEvents(env), baseline: false, tracking: true };
+  }
+  const changes = diffRoster(JSON.parse(stored), nextSnap);
   const now = Date.now();
   const events = await readEvents(env);
   const appended = changes.map((change, index) => ({
@@ -318,7 +321,7 @@ async function recordRoster(env, club) {
   }));
   const merged = [...appended.reverse(), ...events].slice(0, EVENTS_KEPT);
   if (appended.length > 0) await env.DATA.put("events:club", JSON.stringify(merged));
-  await env.DATA.put("snapshot:club", JSON.stringify(nextSnap));
+  await env.DATA.put("snapshot:club", nextJson);
   return { events: merged, baseline: false, tracking: true };
 }
 
