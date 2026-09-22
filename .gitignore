@@ -10,5 +10,7 @@ attachments
 dist
 .env
 .env.*
+.dev.vars
+.dev.vars.*
 *.log
 .DS_Store

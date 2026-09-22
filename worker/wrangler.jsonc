@@ -4,6 +4,7 @@
   "compatibility_date": "2026-09-01",
   "workers_dev": true,
   "observability": { "enabled": true },
+  "triggers": { "crons": ["*/15 * * * *"] },
   "vars": {
     "UPSTREAM_BASE": "https://bsproxy.royaleapi.dev/v1",
     "CLUB_TAG": "#2JYGUQ2P8",

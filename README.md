@@ -29,6 +29,7 @@ old Postgres join/leave store with Workers KV:
 - `GET /maps` — the live event rotation
 - `GET /creators` — the tracked creator channels (name, handle, channel URL)
 - `GET /creators/<id>` — one channel's recent uploads, classified by title
+- `GET /__warm?index=N` — ops: refresh one creator feed into KV (requires the `REGISTER_KEY` header; the same work runs on a 15-minute cron)
 - `GET /health` — what the deployment can reach
 
 Five tabs: **Club** (roster, member pages, join/leave), **Stats** (the club's own

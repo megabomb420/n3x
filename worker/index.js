@@ -29,7 +29,7 @@ const META_TTL_SECONDS = 900;
 const EVENTS_KEPT = 40;
 const MAX_REQUESTS_PER_MINUTE = 90;
 /** Bumped when a mapper changes shape, so a deploy stops serving the old one. */
-const CACHE_VERSION = "3";
+const CACHE_VERSION = "4";
 
 const CORS_HEADERS = {
   "access-control-allow-origin": "*",
@@ -489,6 +489,33 @@ const CHANNEL_ENTRIES_KEPT = 12;
 /** The last good reading of a channel outlives its cache, for rate-limited days. */
 const LAST_GOOD_TTL_SECONDS = 6 * 60 * 60;
 const lastGoodKey = (id) => new Request(`https://relay.invalid/channel-last/${id}?v=${CACHE_VERSION}`);
+const channelKvKey = (id) => `channel:${id}`;
+
+/**
+ * Refresh one channel and keep the reading in KV.
+ *
+ * YouTube throttles the shared edge addresses (a feed that answers 200 from a
+ * home connection returns 429 from here), so the feeds are warmed a channel at a
+ * time on a schedule instead of all seven on a page view, and every good reading
+ * is kept for six hours: a throttled refresh then shows the previous reading,
+ * labelled, rather than an empty card.
+ */
+async function warmChannel(env, index = null) {
+  const slot = index ?? Math.floor(Date.now() / (15 * 60 * 1000)) % CREATORS.length;
+  const creator = CREATORS[slot];
+  try {
+    const entries = await creatorFeed(creator.channelId);
+    const payload = {
+      ...creatorIndexEntry(creator),
+      fetchedAt: Date.now(),
+      entries: entries.slice(0, CHANNEL_ENTRIES_KEPT),
+    };
+    await env.DATA.put(channelKvKey(creator.id), JSON.stringify(payload), { expirationTtl: LAST_GOOD_TTL_SECONDS });
+    return { id: creator.id, entries: payload.entries.length };
+  } catch (err) {
+    return { id: creator.id, error: String(err?.message ?? err) };
+  }
+}
 
 function creatorById(id) {
   return CREATORS.find((creator) => creator.id === id || creator.channelId === id) ?? null;
@@ -533,6 +560,15 @@ async function handleCreatorChannel(request, env, ctx, id) {
       return json(payload);
     } catch (err) {
       const message = String(err?.message ?? err);
+      // KV survives colos and isolates; the per-colo cache is the second choice.
+      const stored = await env.DATA.get(channelKvKey(creator.id));
+      if (stored) {
+        try {
+          return json({ ...JSON.parse(stored), stale: true, error: message });
+        } catch {
+          /* fall through to the cache */
+        }
+      }
       const stale = await caches.default.match(lastGoodKey(creator.id));
       if (stale) {
         const payload = await stale.json();
@@ -628,6 +664,11 @@ export default {
     const url = new URL(request.url);
     const path = url.pathname.replace(/\/+$/, "") || "/";
     if (request.method === "OPTIONS") return new Response(null, { status: 204, headers: CORS_HEADERS });
+    if (path === "/__warm") {
+      if (request.headers.get("x-register-key") !== env.REGISTER_KEY) return json({ error: "forbidden" }, 403);
+      const index = Number(url.searchParams.get("index"));
+      return json(await warmChannel(env, Number.isInteger(index) && index >= 0 && index < CREATORS.length ? index : null));
+    }
     if (limited(request.headers.get("cf-connecting-ip") ?? "unknown")) {
       return json({ error: "too many requests" }, 429);
     }
@@ -656,5 +697,10 @@ export default {
     if (player) return handlePlayer(request, env, ctx, player[1]);
 
     return json({ error: "not found" }, 404);
+  },
+
+  /** One channel per run, so a throttled feed is retried gently over the day. */
+  async scheduled(event, env, ctx) {
+    ctx.waitUntil(warmChannel(env));
   },
 };
