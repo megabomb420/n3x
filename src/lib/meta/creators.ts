@@ -39,7 +39,7 @@ const CACHE_TTL_MS = 30 * 60_000;
 const INDEX_TTL_MS = 5 * 60_000;
 const CONCURRENCY = 4;
 /** Bumped when a stored shape changes, so an old payload is never re-read. */
-const CACHE_TAG = "v3";
+const CACHE_TAG = "v4";
 
 async function loadCreatorChannel(channel: CreatorChannel): Promise<CreatorFeed> {
   const key = `creator:${CACHE_TAG}:${channel.id}`;
@@ -47,7 +47,8 @@ async function loadCreatorChannel(channel: CreatorChannel): Promise<CreatorFeed>
   if (hit && Date.now() - hit.savedAt < CACHE_TTL_MS) return hit.value;
   try {
     const feed = await apiGet<CreatorFeed>(`/creators/${channel.id}?tag=${CACHE_TAG}`);
-    cacheSet(key, feed);
+    // A failure is never worth caching: the next view should try again.
+    if (feed.entries.length > 0 && !feed.error) cacheSet(key, feed);
     return feed;
   } catch (err) {
     if (hit) return hit.value;
