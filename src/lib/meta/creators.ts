@@ -1,56 +1,79 @@
 /**
- * The game's meta, as the people who publish it see it: the newest tier-list
- * and meta uploads from the creators' public YouTube feeds.
+ * The game's meta, as the people who publish it see it: recent uploads from the
+ * creators' public YouTube feeds, classified by the backend.
  *
- * The feeds carry no CORS headers, so the browser reads them through the Worker
- * (`GET /creators`), which also classifies the titles. Titles and dates only —
- * placements inside a video are not transcribed, because the app cannot see
- * them and guessing from a thumbnail would be invention.
+ * One request per channel (`GET /creators/<id>`) — a Worker invocation may only
+ * make so many subrequests, so the fan-out happens here, four channels at a time,
+ * with a per-channel cache. Titles and dates only; placements inside a video are
+ * never transcribed.
  */
 import { apiGet } from "@/lib/api/client";
+import type { CreatorVideo } from "./creator-math";
 import { cacheGet, cacheSet } from "./cache";
 
-export interface CreatorVideo {
-  videoId: string;
-  title: string;
-  publishedAt: string;
-  watchUrl: string;
-  thumbnailUrl: string;
-  kind: string | null;
-}
+export type { CreatorVideo, MetaFilter } from "./creator-math";
+export { countMentions, namesInTitle, otherVideos, pickLeadVideo } from "./creator-math";
 
-export interface CreatorEntry {
+export interface CreatorChannel {
   id: string;
   name: string;
   handle: string;
   channelUrl: string;
-  /** Newest upload of any kind, so "nothing recent" is still answerable. */
-  latest: CreatorVideo | null;
-  /** The tier list the screen leads with. */
-  list: CreatorVideo | null;
-  recent: CreatorVideo[];
+}
+
+export interface CreatorIndex {
+  updatedAt: number;
+  source: string;
+  creators: CreatorChannel[];
+}
+
+export interface CreatorFeed extends CreatorChannel {
+  fetchedAt: number;
+  entries: CreatorVideo[];
   error?: string;
 }
 
-export interface CreatorsPayload {
-  updatedAt: number;
-  source: string;
-  creators: CreatorEntry[];
-}
-
 const CACHE_TTL_MS = 30 * 60_000;
+const CONCURRENCY = 4;
+/** Bumped when a stored shape changes, so an old payload is never re-read. */
+const CACHE_TAG = "v1";
 
-/** Creator meta, cached on the device for half an hour. */
-export async function loadCreators(): Promise<CreatorsPayload & { fetchedAt: number }> {
-  const key = "creators:v1";
-  const hit = cacheGet<CreatorsPayload>(key);
-  if (hit && Date.now() - hit.savedAt < CACHE_TTL_MS) return { ...hit.value, fetchedAt: hit.savedAt };
+async function loadCreatorChannel(channel: CreatorChannel): Promise<CreatorFeed> {
+  const key = `creator:${CACHE_TAG}:${channel.id}`;
+  const hit = cacheGet<CreatorFeed>(key);
+  if (hit && Date.now() - hit.savedAt < CACHE_TTL_MS) return hit.value;
   try {
-    const payload = await apiGet<CreatorsPayload>("/creators");
-    cacheSet(key, payload);
-    return { ...payload, fetchedAt: Date.now() };
+    const feed = await apiGet<CreatorFeed>(`/creators/${channel.id}`);
+    cacheSet(key, feed);
+    return feed;
   } catch (err) {
-    if (hit) return { ...hit.value, fetchedAt: hit.savedAt };
+    if (hit) return hit.value;
     throw err;
   }
+}
+
+/** Every known channel with its recent uploads; a failing feed keeps its error. */
+export async function loadCreatorFeeds(): Promise<{ channels: CreatorFeed[]; fetchedAt: number }> {
+  const indexHit = cacheGet<CreatorIndex>("creators-index:v1");
+  let index = indexHit && Date.now() - indexHit.savedAt < CACHE_TTL_MS ? indexHit.value : null;
+  if (!index) {
+    index = await apiGet<CreatorIndex>("/creators");
+    cacheSet("creators-index:v1", index);
+  }
+
+  const channels: CreatorFeed[] = [];
+  for (let start = 0; start < index.creators.length; start += CONCURRENCY) {
+    const slice = index.creators.slice(start, start + CONCURRENCY);
+    const settled = await Promise.all(
+      slice.map(async (channel) => {
+        try {
+          return await loadCreatorChannel(channel);
+        } catch (err) {
+          return { ...channel, fetchedAt: Date.now(), entries: [], error: err instanceof Error ? err.message : String(err) };
+        }
+      }),
+    );
+    channels.push(...settled);
+  }
+  return { channels, fetchedAt: Date.now() };
 }

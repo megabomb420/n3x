@@ -98,10 +98,13 @@ function AboutPage() {
               right-hand column means the API published no trophy or Elo change for those battles.
             </li>
             <li>
-              <span className="text-fg">Meta:</span> the newest tier-list and meta uploads from SpenLC,
-              Ash, KairosTime and CryingMan, read from their public YouTube feeds. Titles and dates
-              only — placements inside a video are not transcribed, and the app does not guess them
-              from a thumbnail. Brawlers named in a title appear as chips so a list reads at a glance.
+              <span className="text-fg">Meta:</span> recent uploads from seven tracked channels — SpenLC,
+              Ash, KairosTime, CryingMan, Rey, Lex and bobby — read from their public YouTube feeds.
+              The <span className="text-fg">Tier lists</span> filter keeps only uploads the backend
+              tagged as a tier list or meta video; <span className="text-fg">Everything</span> shows
+              the feeds as they are. "Named most in titles" counts brawler names across the last 30
+              days of headlines — a reading of the titles, not a tier list. Placements inside a video
+              are never transcribed, and the app does not guess them from a thumbnail.
             </li>
             <li>
               <span className="text-fg">Brawler and map art:</span>{" "}

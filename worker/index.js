@@ -29,7 +29,7 @@ const META_TTL_SECONDS = 900;
 const EVENTS_KEPT = 40;
 const MAX_REQUESTS_PER_MINUTE = 90;
 /** Bumped when a mapper changes shape, so a deploy stops serving the old one. */
-const CACHE_VERSION = "2";
+const CACHE_VERSION = "3";
 
 const CORS_HEADERS = {
   "access-control-allow-origin": "*",
@@ -478,10 +478,53 @@ const CREATORS = [
   { id: "ash", name: "Ash", handle: "@ashbrawlstars", channelId: "UC874WmmCVtIwTG4gQbWHKUQ" },
   { id: "kairos", name: "KairosTime", handle: "@kairosgaming", channelId: "UCmG2EhfOwSjpPMX4LjGY__A" },
   { id: "cryingman", name: "CryingMan", handle: "@cryingman", channelId: "UCGShu88Lh2ZAtXX0qbV9fXA" },
+  { id: "rey", name: "Rey", handle: "@ReyBrawlStars", channelId: "UCUZks0tPvD_ZbNwtBzyR_JQ" },
+  { id: "lex", name: "Lex", handle: "@LexBrawlStars", channelId: "UC4yh9rj_cPT77it63N14HQg" },
+  { id: "bobby", name: "bobby", handle: "@bobbybrawlstars", channelId: "UCcvJdy945lh9KNQnW2yr_0A" },
 ];
 const CREATORS_TTL_SECONDS = 1800;
-const RECENT_KEPT = 3;
-const TIER_LIST_WINDOW_MS = 7 * 24 * 60 * 60 * 1000;
+const CHANNEL_ENTRIES_KEPT = 12;
+
+function creatorById(id) {
+  return CREATORS.find((creator) => creator.id === id || creator.channelId === id) ?? null;
+}
+
+function creatorIndexEntry(creator) {
+  return {
+    id: creator.id,
+    name: creator.name,
+    handle: creator.handle,
+    channelUrl: `https://www.youtube.com/channel/${creator.channelId}`,
+  };
+}
+
+/**
+ * One creator's recent uploads, classified by title.
+ *
+ * One channel per invocation: a Worker invocation may only make so many
+ * subrequests, so the app asks per channel (and caches each) instead of the
+ * backend pulling seven feeds in one go.
+ */
+async function handleCreatorChannel(request, env, ctx, id) {
+  const creator = creatorById(id);
+  if (!creator) return json({ error: "not found" }, 404);
+  return cached(request, ctx, CREATORS_TTL_SECONDS, async () => {
+    const base = creatorIndexEntry(creator);
+    try {
+      const entries = await creatorFeed(creator.channelId);
+      return json({ ...base, fetchedAt: Date.now(), entries: entries.slice(0, CHANNEL_ENTRIES_KEPT) });
+    } catch (err) {
+      return json({ ...base, fetchedAt: Date.now(), entries: [], error: String(err?.message ?? err) });
+    }
+  });
+}
+
+/** Which creator channels this build knows about. */
+async function handleCreators(request, env, ctx) {
+  return cached(request, ctx, CREATORS_TTL_SECONDS, async () =>
+    json({ updatedAt: Date.now(), source: "YouTube RSS", creators: CREATORS.map(creatorIndexEntry) }),
+  );
+}
 
 /** Tier-list and meta uploads, recognised by title. A live stream is never one. */
 export function classifyCreatorTitle(title) {
@@ -537,45 +580,6 @@ async function creatorFeed(channelId) {
   return parseCreatorFeed(await res.text());
 }
 
-/**
- * What the creators are saying, straight from their public feeds: the newest
- * tier list within a week (or the newest tier-list-ish upload), plus a few
- * recent ones. Titles and dates only — placements inside a video are never
- * transcribed, because the app cannot see them.
- */
-async function handleCreators(request, env, ctx) {
-  return cached(request, ctx, CREATORS_TTL_SECONDS, async () => {
-    const creators = await Promise.all(
-      CREATORS.map(async (creator) => {
-        const base = {
-          id: creator.id,
-          name: creator.name,
-          handle: creator.handle,
-          channelUrl: `https://www.youtube.com/channel/${creator.channelId}`,
-        };
-        try {
-          const entries = await creatorFeed(creator.channelId);
-          const classified = entries.filter((entry) => entry.kind);
-          const newest = classified[0] ?? null;
-          const newestAt = newest ? Date.parse(newest.publishedAt) : 0;
-          const recentTierList = classified.find(
-            (entry) => entry.kind === "tier list" && newestAt - Date.parse(entry.publishedAt) <= TIER_LIST_WINDOW_MS,
-          );
-          const list = recentTierList ?? newest;
-          return {
-            ...base,
-            latest: entries[0] ?? null,
-            list,
-            recent: classified.filter((entry) => entry !== list).slice(0, RECENT_KEPT),
-          };
-        } catch (err) {
-          return { ...base, latest: null, list: null, recent: [], error: String(err?.message ?? err) };
-        }
-      }),
-    );
-    return json({ updatedAt: Date.now(), source: "YouTube RSS", creators });
-  });
-}
 
 async function handleMaps(request, env, ctx) {
   return cached(request, ctx, META_TTL_SECONDS, async () => {
@@ -609,6 +613,9 @@ export default {
     }
     if (path === "/club") return handleClub(request, env, ctx);
     if (path === "/creators") return handleCreators(request, env, ctx);
+
+    const channel = /^\/creators\/([a-z0-9-]{2,32})$/.exec(path);
+    if (channel) return handleCreatorChannel(request, env, ctx, channel[1]);
     if (path === "/ladder") return handleLadder(request, env, ctx);
     if (path === "/maps") return handleMaps(request, env, ctx);
 

@@ -27,13 +27,15 @@ old Postgres join/leave store with Workers KV:
 - `GET /battles/<tag>` — one member's battles, which the app aggregates into Stats
 - `GET /ladder?type=players|clubs` — official leaderboards
 - `GET /maps` — the live event rotation
-- `GET /creators` — tier-list and meta uploads from the creators' public YouTube feeds
+- `GET /creators` — the tracked creator channels (name, handle, channel URL)
+- `GET /creators/<id>` — one channel's recent uploads, classified by title
 - `GET /health` — what the deployment can reach
 
 Five tabs: **Club** (roster, member pages, join/leave), **Stats** (the club's own
-battle logs — sample sizes shown, no global rates exist), **Meta** (what the
-creators published: titles and dates only), **Ladder** (official leaderboards) and
-**Maps** (rotation).
+battle logs — sample sizes shown, no global rates exist), **Meta** (seven creator
+channels: tier-list uploads, an "everything" view and a count of brawler names in
+the last month's titles), **Ladder** (official leaderboards) and **Maps**
+(rotation).
 
 One owner step remains: create an API key at
 [developer.brawlstars.com](https://developer.brawlstars.com), whitelist

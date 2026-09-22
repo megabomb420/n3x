@@ -44,10 +44,13 @@ What it is not: a global tier list. Every row carries its own sample size, and t
 
 The owner meant the *game's* meta by "Meta", so the club numbers moved to **Stats** and **Meta** is now the creator board:
 
-- `GET /creators` reads the public YouTube feeds of SpenLC, Ash, KairosTime and CryingMan (four subrequests, edge-cached for 30 minutes), classifies the titles (the tier-list heuristic the previous app used: live streams never count, a full ranking outranks a vague tier list) and answers with each channel's chosen tier list, its newest upload and a few recent ones. A feed that fails is reported per creator instead of being dropped.
+- `GET /creators` first shipped as one call over SpenLC, Ash, KairosTime and CryingMan (four subrequests) and was later split — see the extras below.
 - The Meta screen shows those uploads with thumbnails, kind badges and dates, plus chips for brawlers named in the titles (matched against the BrawlAPI catalog). **Placements inside a video are never transcribed** — the app cannot see them.
 - Naming: `src/components/stats-screen.tsx` + `src/routes/stats.tsx` + `src/lib/club/stats.ts` (pure arithmetic) and `src/lib/club/stats-loader.ts`; the creator board lives in `src/lib/meta/creators.ts` + `src/components/meta-screen.tsx`. Navigation is five tabs, `/stats` and `/meta` are both prerendered, and `Stats` never claims to be global.
 - Tests grew to ten in `scripts/worker-mapping.test.mjs` (creator title classification and feed parsing among them) plus the club-stats arithmetic tests.
+- **Extras the owner asked for:** three more verified channels (Rey, Lex, bobby — each checked for a real channel id and a live feed; several candidates were dropped because their feeds are empty or stale), a `Tier lists` / `Everything` filter, and a "Named most in titles" board counting brawler names across the last 30 days of headlines.
+- The backend was reshaped for that: `GET /creators` is now just the index of channels and `GET /creators/<id>` answers one feed, because a single Worker invocation could not hold seven feeds inside its subrequest budget (the same reason `/battles/<tag>` exists). The app fans out four at a time and caches each channel for half an hour.
+- Lead-video choice, the filter and the mention counting live in `src/lib/meta/creator-math.ts` (pure, tested in `creator-math.test.ts`); `CACHE_VERSION` went to 3 so the edge stopped serving the four-channel index.
 
 ### 2026-09-22 (late): live on the official API
 
