@@ -34,9 +34,10 @@ export interface CreatorFeed extends CreatorChannel {
 }
 
 const CACHE_TTL_MS = 30 * 60_000;
+const INDEX_TTL_MS = 5 * 60_000;
 const CONCURRENCY = 4;
 /** Bumped when a stored shape changes, so an old payload is never re-read. */
-const CACHE_TAG = "v1";
+const CACHE_TAG = "v2";
 
 async function loadCreatorChannel(channel: CreatorChannel): Promise<CreatorFeed> {
   const key = `creator:${CACHE_TAG}:${channel.id}`;
@@ -54,11 +55,14 @@ async function loadCreatorChannel(channel: CreatorChannel): Promise<CreatorFeed>
 
 /** Every known channel with its recent uploads; a failing feed keeps its error. */
 export async function loadCreatorFeeds(): Promise<{ channels: CreatorFeed[]; fetchedAt: number }> {
-  const indexHit = cacheGet<CreatorIndex>("creators-index:v1");
-  let index = indexHit && Date.now() - indexHit.savedAt < CACHE_TTL_MS ? indexHit.value : null;
+  // The index is tiny and decides which channels exist, so it is revalidated on
+  // a short window; the feeds themselves stay cached for half an hour.
+  const indexKey = `creators-index:${CACHE_TAG}`;
+  const indexHit = cacheGet<CreatorIndex>(indexKey);
+  let index = indexHit && Date.now() - indexHit.savedAt < INDEX_TTL_MS ? indexHit.value : null;
   if (!index) {
     index = await apiGet<CreatorIndex>("/creators");
-    cacheSet("creators-index:v1", index);
+    cacheSet(indexKey, index);
   }
 
   const channels: CreatorFeed[] = [];
