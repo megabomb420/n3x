@@ -184,7 +184,13 @@ function CreatorCard({
         </a>
       </div>
 
-      {channel.error ? <p className="mt-2 text-xs text-low">Feed unavailable ({channel.error})</p> : null}
+      {channel.error ? (
+        <p className="mt-2 text-xs text-low">
+          {channel.stale
+            ? `Feed unavailable (${channel.error}) — showing the last reading from ${formatRelative(channel.fetchedAt)}.`
+            : `Feed unavailable (${channel.error})`}
+        </p>
+      ) : null}
 
       {lead ? (
         <a

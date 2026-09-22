@@ -486,6 +486,9 @@ const CREATORS_TTL_SECONDS = 1800;
 /** The channel index is tiny and decides what exists, so it refreshes sooner. */
 const CREATORS_INDEX_TTL_SECONDS = 300;
 const CHANNEL_ENTRIES_KEPT = 12;
+/** The last good reading of a channel outlives its cache, for rate-limited days. */
+const LAST_GOOD_TTL_SECONDS = 6 * 60 * 60;
+const lastGoodKey = (id) => new Request(`https://relay.invalid/channel-last/${id}?v=${CACHE_VERSION}`);
 
 function creatorById(id) {
   return CREATORS.find((creator) => creator.id === id || creator.channelId === id) ?? null;
@@ -505,7 +508,8 @@ function creatorIndexEntry(creator) {
  *
  * One channel per invocation: a Worker invocation may only make so many
  * subrequests, so the app asks per channel (and caches each) instead of the
- * backend pulling seven feeds in one go.
+ * backend pulling seven feeds in one go. A failed refresh falls back to the last
+ * good reading, labelled as such, rather than blanking the card.
  */
 async function handleCreatorChannel(request, env, ctx, id) {
   const creator = creatorById(id);
@@ -514,9 +518,27 @@ async function handleCreatorChannel(request, env, ctx, id) {
     const base = creatorIndexEntry(creator);
     try {
       const entries = await creatorFeed(creator.channelId);
-      return json({ ...base, fetchedAt: Date.now(), entries: entries.slice(0, CHANNEL_ENTRIES_KEPT) });
+      const payload = { ...base, fetchedAt: Date.now(), entries: entries.slice(0, CHANNEL_ENTRIES_KEPT) };
+      ctx.waitUntil(
+        caches.default.put(
+          lastGoodKey(creator.id),
+          new Response(JSON.stringify(payload), {
+            headers: {
+              "content-type": "application/json",
+              "cache-control": `public, max-age=${LAST_GOOD_TTL_SECONDS}`,
+            },
+          }),
+        ),
+      );
+      return json(payload);
     } catch (err) {
-      return json({ ...base, fetchedAt: Date.now(), entries: [], error: String(err?.message ?? err) });
+      const message = String(err?.message ?? err);
+      const stale = await caches.default.match(lastGoodKey(creator.id));
+      if (stale) {
+        const payload = await stale.json();
+        return json({ ...payload, stale: true, error: message });
+      }
+      return json({ ...base, fetchedAt: Date.now(), entries: [], error: message });
     }
   });
 }
@@ -574,10 +596,16 @@ export function parseCreatorFeed(xml) {
   return entries.sort((a, b) => Date.parse(b.publishedAt) - Date.parse(a.publishedAt));
 }
 
-async function creatorFeed(channelId) {
+async function creatorFeed(channelId, attempt = 0) {
   const res = await fetch(`https://www.youtube.com/feeds/videos.xml?channel_id=${channelId}`, {
     headers: { accept: "application/atom+xml, application/xml, text/xml", "user-agent": "n3x-club-companion" },
   });
+  // YouTube throttles the shared edge addresses now and then; one short retry
+  // keeps a rate-limited card from going empty for the rest of its cache window.
+  if (res.status === 429 && attempt === 0) {
+    await new Promise((resolve) => setTimeout(resolve, 1200));
+    return creatorFeed(channelId, attempt + 1);
+  }
   if (!res.ok) throw new Error(`feed ${res.status}`);
   return parseCreatorFeed(await res.text());
 }

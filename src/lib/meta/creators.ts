@@ -30,6 +30,8 @@ export interface CreatorIndex {
 export interface CreatorFeed extends CreatorChannel {
   fetchedAt: number;
   entries: CreatorVideo[];
+  /** True when the last refresh failed and this is the previous reading. */
+  stale?: boolean;
   error?: string;
 }
 
