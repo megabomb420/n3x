@@ -11,7 +11,10 @@ function Home() {
     <AppShell
       title={t("nav.club")}
       headerRight={
-        <Link to="/about" className="px-1.5 text-xs text-muted">
+        <Link
+          to="/about"
+          className="shrink-0 rounded-full border border-border px-2.5 py-1 text-[11px] text-muted"
+        >
           {t("about.title")}
         </Link>
       }

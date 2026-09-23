@@ -13,7 +13,7 @@ export function ClubLogo({
       alt=""
       width={size}
       height={size}
-      className={cn("mark shrink-0 object-cover", className)}
+      className={cn("mark shrink-0 object-contain", className)}
       style={{ width: size, height: size }}
     />
   );

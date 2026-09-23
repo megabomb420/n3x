@@ -51,16 +51,16 @@ export function AppShell({
 
   return (
     <div className="mx-auto flex h-full max-w-lg flex-col overflow-hidden bg-bg text-fg">
-      <header className="shrink-0 bg-bg safe-top">
-        <div className="flex items-center gap-2 px-3 py-1">
+      <header className="shrink-0 border-b border-border bg-bg safe-top">
+        <div className="flex items-center gap-3 px-3 pb-2.5 pt-1">
           <Link to="/" aria-label="'N3X club home" className="shrink-0">
-            <ClubLogo size={36} />
+            <ClubLogo size={40} />
           </Link>
           <div className="min-w-0 flex-1">
-            <p className="font-display text-[10px] uppercase leading-none tracking-[0.22em] text-gold">
+            <p className="font-display text-[11px] uppercase leading-none tracking-[0.34em] text-gold/85">
               'N3X
             </p>
-            <h1 className="truncate font-display text-[1.65rem] leading-none tracking-wide">
+            <h1 className="mt-1 truncate font-display text-[1.7rem] leading-none tracking-wide">
               {title ?? t("nav.club")}
             </h1>
           </div>
