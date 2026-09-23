@@ -1,4 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
+import { useState } from "react";
 import { Clock, Map } from "lucide-react";
 import { apiGet } from "@/lib/api/client";
 import { findMap, loadCatalog } from "@/lib/meta/brawlapi";
@@ -85,26 +86,14 @@ function RotationSection({
       </div>
       <ul className="flex flex-col gap-2">
         {events.map((event, i) => {
-          const art = findMap(catalog, event.map);
+          const art = findMap(catalog, event.map, event.mode);
           return (
             <li
               key={`${i}-${event.slot}-${event.mode}-${event.map}`}
               className="overflow-hidden rounded-2xl bg-surface shadow-[var(--shadow-border)]"
             >
               <div className="relative aspect-[2/1] bg-surface-2">
-                {art?.imageUrl ? (
-                  <img
-                    src={art.imageUrl}
-                    alt=""
-                    className="bleed h-full w-full object-cover"
-                    loading="lazy"
-                    decoding="async"
-                  />
-                ) : (
-                  <div className="flex h-full items-center justify-center text-subtle">
-                    <Map className="size-6" />
-                  </div>
-                )}
+                <MapArt map={art?.imageUrl ?? null} mode={art?.modeImage ?? null} />
                 <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/85 via-black/40 to-transparent px-3 pb-2.5 pt-10">
                   <p className="truncate font-medium text-white">{event.map || t("maps.mapUnknown")}</p>
                   <p className="truncate text-xs text-white/75">
@@ -124,6 +113,34 @@ function RotationSection({
         })}
       </ul>
     </section>
+  );
+}
+
+/**
+ * Map art with a fallback chain: the Brawlify CDN has no file for a few maps,
+ * and the mode's own art beats an empty card. The last resort is the map icon.
+ */
+function MapArt({ map, mode }: { map: string | null; mode: string | null }) {
+  const [step, setStep] = useState(0);
+  const candidates = [map, mode].filter((url): url is string => Boolean(url));
+  const src = candidates[step];
+
+  if (!src) {
+    return (
+      <div className="flex h-full items-center justify-center text-subtle">
+        <Map className="size-6" />
+      </div>
+    );
+  }
+  return (
+    <img
+      src={src}
+      alt=""
+      className="bleed h-full w-full object-cover"
+      loading="lazy"
+      decoding="async"
+      onError={() => setStep((current) => current + 1)}
+    />
   );
 }
 

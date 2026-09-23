@@ -1,7 +1,9 @@
 import { Link, useRouterState } from "@tanstack/react-router";
-import { ChartColumn, Map, Settings, Swords, Users, Youtube } from "lucide-react";
-import { useEffect, useRef, type ReactNode } from "react";
+import { useQueryClient } from "@tanstack/react-query";
+import { ChartColumn, Map, RotateCw, Settings, Swords, Users, Youtube } from "lucide-react";
+import { useCallback, useEffect, useRef, type ReactNode } from "react";
 import { useT, type StringKey } from "@/lib/i18n/provider";
+import { usePullToRefresh } from "@/hooks/use-pull-to-refresh";
 import { cn } from "@/lib/utils";
 import { ClubLogo } from "./club-logo";
 
@@ -33,6 +35,12 @@ export function AppShell({
   const t = useT();
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const mainRef = useRef<HTMLElement>(null);
+  const queryClient = useQueryClient();
+  const refresh = useCallback(() => queryClient.invalidateQueries(), [queryClient]);
+  const { pull, refreshing, threshold } = usePullToRefresh(mainRef, refresh);
+  /** The refreshing hold keeps the column open while the queries settle. */
+  const offset = refreshing ? 44 : pull;
+  const dragging = pull > 0 && !refreshing;
 
   useEffect(() => {
     if (import.meta.env.PROD && "serviceWorker" in navigator) {
@@ -118,9 +126,40 @@ export function AppShell({
         </div>
       </header>
 
-      <main ref={mainRef} className="min-h-0 flex-1 overflow-y-auto overscroll-contain pb-3">
-        {children}
-      </main>
+      <div className="relative min-h-0 flex-1 overflow-hidden">
+        <div
+          aria-hidden
+          className="pointer-events-none absolute inset-x-0 top-0 flex justify-center"
+          style={{
+            transform: `translateY(${offset - 26}px)`,
+            opacity: refreshing ? 1 : Math.min(1, pull / threshold),
+            transition: dragging ? "none" : "transform 200ms ease-out, opacity 200ms ease-out",
+          }}
+        >
+          <span className="flex items-center gap-1.5 rounded-full bg-surface px-2.5 py-1 text-[11px] text-muted shadow-[var(--shadow-border)]">
+            <RotateCw
+              className={cn("size-3.5", refreshing && "animate-spin")}
+              style={refreshing ? undefined : { transform: `rotate(${pull * 3}deg)` }}
+            />
+            {refreshing
+              ? t("common.refreshing")
+              : pull >= threshold
+                ? t("common.releaseToRefresh")
+                : t("common.pullToRefresh")}
+          </span>
+        </div>
+
+        <main
+          ref={mainRef}
+          className="h-full overflow-y-auto overscroll-contain pb-3"
+          style={{
+            transform: offset ? `translateY(${offset}px)` : undefined,
+            transition: dragging ? "none" : "transform 200ms ease-out",
+          }}
+        >
+          {children}
+        </main>
+      </div>
 
       <nav className="shrink-0 border-t border-border bg-bg safe-bottom" aria-label="Primary">
         <div className="grid grid-cols-6">

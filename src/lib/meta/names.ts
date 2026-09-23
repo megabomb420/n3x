@@ -8,6 +8,12 @@ export function normalizeName(value: string): string {
     .trim();
 }
 
+/** Name key that ignores punctuation, for the joins the strict key misses: the
+ *  official API says `Belle's Rock`, BrawlAPI says `Belles Rock`. */
+export function looseName(value: string): string {
+  return value.toUpperCase().replace(/[^A-Z0-9]/g, "");
+}
+
 /** Brawl Time Ninja media slug: "MR. P" → "mr__p", "R-T" → "r-t". */
 export function brawltimeSlug(cubeName: string): string {
   return cubeName.toLowerCase().replace(/\./g, "_").replace(/ /g, "_");

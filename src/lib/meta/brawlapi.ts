@@ -1,5 +1,5 @@
 import type { BrawlerCatalogItem, Catalog, MapCatalogItem, ModeCatalogItem } from "./types";
-import { brawltimeSlug, normalizeName } from "./names";
+import { brawltimeSlug, looseName, normalizeName } from "./names";
 import { cacheGet, cacheSet } from "./cache";
 
 const BASE = "https://api.brawlapi.com";
@@ -147,10 +147,29 @@ export function findBrawler(
   );
 }
 
-export function findMap(catalog: Catalog | null, mapName: string): MapCatalogItem | null {
+/**
+ * Art for a rotation event. The official API and BrawlAPI disagree on some
+ * names (`Belle's Rock` / `Belles Rock`), and a name can appear once per mode,
+ * so prefer the entry whose mode agrees with the event.
+ */
+export function findMap(
+  catalog: Catalog | null,
+  mapName: string,
+  modeName?: string,
+): MapCatalogItem | null {
   if (!catalog) return null;
   const key = normalizeName(mapName);
-  return catalog.maps.find((m) => normalizeName(m.name) === key) ?? null;
+  const loose = looseName(mapName);
+  const mode = modeName ? looseName(modeName) : "";
+  const sameMode = (m: MapCatalogItem) => mode !== "" && looseName(m.modeName) === mode;
+
+  return (
+    catalog.maps.find((m) => normalizeName(m.name) === key && sameMode(m)) ??
+    catalog.maps.find((m) => looseName(m.name) === loose && sameMode(m)) ??
+    catalog.maps.find((m) => normalizeName(m.name) === key) ??
+    catalog.maps.find((m) => looseName(m.name) === loose) ??
+    null
+  );
 }
 
 export function portraitUrl(item: BrawlerCatalogItem | null, cubeName: string): string {

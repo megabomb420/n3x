@@ -25,6 +25,9 @@ export const STRINGS = {
 
     "common.tryAgain": "Try again",
     "common.refresh": "Refresh",
+    "common.pullToRefresh": "Pull to refresh",
+    "common.releaseToRefresh": "Release to refresh",
+    "common.refreshing": "Refreshing…",
     "common.updated": "Updated {when}",
     "common.offline": "You're offline. Connect to refresh.",
     "common.offlineStale": "Offline — showing last saved snapshot. Numbers may be stale.",
@@ -196,6 +199,9 @@ export const STRINGS = {
 
     "common.tryAgain": "Spróbuj ponownie",
     "common.refresh": "Odśwież",
+    "common.pullToRefresh": "Pociągnij, aby odświeżyć",
+    "common.releaseToRefresh": "Puść, aby odświeżyć",
+    "common.refreshing": "Odświeżanie…",
     "common.updated": "Zaktualizowano {when}",
     "common.offline": "Brak połączenia. Połącz się, aby odświeżyć.",
     "common.offlineStale": "Brak połączenia — ostatni zapisany stan. Liczby mogą być nieaktualne.",
