@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { execFile } from "node:child_process";
-import { mkdtempSync, symlinkSync } from "node:fs";
+import { mkdirSync, mkdtempSync, symlinkSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { test } from "node:test";
@@ -24,6 +24,20 @@ function appEnvFetch(env) {
     ok: true,
     text: async () => JSON.stringify(env),
   });
+}
+
+/**
+ * Link the directory `target` at `linkPath`. A directory symlink needs
+ * Developer Mode or admin on Windows (`EPERM` otherwise); a junction needs
+ * neither, and node realpaths it exactly like a symlink, so the
+ * `argv[1]`-vs-`import.meta.url` regression stays covered there.
+ */
+function linkDirectory(target, linkPath) {
+  if (process.platform === "win32") {
+    symlinkSync(target, linkPath, "junction");
+    return;
+  }
+  symlinkSync(target, linkPath);
 }
 
 test("the flag predicate matches src/lib/auth", () => {
@@ -90,16 +104,23 @@ test("only a divergence warns the smoke verdict", () => {
   }
 });
 
-test("the build side resolves the template's shipped app-env", () => {
-  assert.equal(buildAuthEnabled(projectRoot(), {}), false);
-  assert.equal(buildAuthEnabled(projectRoot(), { VITE_AUTH_ENABLED: "true" }), true);
+test("the build side resolves the workspace's own app-env, defaulting off", () => {
+  const root = mkdtempSync(join(tmpdir(), "auth-invariant-"));
+  // Nothing shipped: the wrapper's default keeps sign-in off.
+  assert.equal(buildAuthEnabled(root, {}), false);
+
+  // The workspace file turns it on; an explicit process-env entry still wins.
+  mkdirSync(join(root, ".grok"), { recursive: true });
+  writeFileSync(join(root, ".grok/app-env.json"), '{"VITE_AUTH_ENABLED":"true"}');
+  assert.equal(buildAuthEnabled(root, {}), true);
+  assert.equal(buildAuthEnabled(root, { VITE_AUTH_ENABLED: "false" }), false);
 });
 
 test("the CLI reports rather than silently passing when run via a symlink", async () => {
   // A check whose exit code is the whole signal must never no-op to 0 because
   // process.argv[1] came in through a symlinked path.
   const link = join(mkdtempSync(join(tmpdir(), "auth-invariant-link-")), "scripts");
-  symlinkSync(join(projectRoot(), "scripts"), link);
+  linkDirectory(join(projectRoot(), "scripts"), link);
   const error = await promisify(execFile)(process.execPath, [
     join(link, "check-auth-invariant.mjs"),
     "--dev-url",

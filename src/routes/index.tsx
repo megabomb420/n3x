@@ -12,7 +12,7 @@ function Home() {
       title={t("nav.club")}
       headerRight={
         <Link
-          to="/about"
+          to="/about/"
           replace
           className="shrink-0 rounded-full border border-border px-2.5 py-1 text-[11px] text-muted"
         >

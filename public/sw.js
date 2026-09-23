@@ -1,13 +1,13 @@
 /**
  * Stay inside the installed app.
  *
- * iOS leaves standalone mode when a service worker hands a navigation a
- * response whose `redirected` flag is set (a trailing-slash or host redirect
- * counts). The browser then opens Safari. A fresh Response drops that flag.
- * A failed navigation falls back to the cached shell so the client router can
- * boot, instead of a browser error page.
+ * A navigation request can use redirect: "manual". Passing it straight to
+ * fetch() makes a static host's /route → /route/ redirect opaque, so the old
+ * worker silently served the cached Club document for another route. Fetch
+ * the same-origin URL as a normal GET, follow the redirect, and return a fresh
+ * Response so iOS does not leave standalone mode on a redirected response.
  */
-const SHELL = "n3x-shell-v2";
+const SHELL = "n3x-shell-v3";
 
 function shellUrl() {
   return new URL(self.registration.scope).href;
@@ -60,14 +60,22 @@ self.addEventListener("fetch", (event) => {
   event.respondWith(
     (async () => {
       try {
-        const res = await withoutRedirect(await fetch(req));
+        const res = await withoutRedirect(
+          await fetch(req.url, {
+            headers: req.headers,
+            credentials: req.credentials,
+            redirect: "follow",
+          }),
+        );
         if (res && res.ok) {
           const copy = res.clone();
-          caches.open(SHELL).then((cache) => cache.put(shellUrl(), copy)).catch(() => undefined);
+          // Keep the exact document for an offline revisit without replacing
+          // the root shell with the last route that happened to load.
+          event.waitUntil(caches.open(SHELL).then((cache) => cache.put(req, copy)).catch(() => undefined));
           return res;
         }
       } catch {
-        /* offline or a blocked navigation — the shell still boots the router */
+        /* offline or a blocked navigation — use an already cached document */
       }
       const cache = await caches.open(SHELL);
       return (await cache.match(req)) || (await cache.match(shellUrl())) || fetch(req);

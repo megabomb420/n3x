@@ -16,17 +16,17 @@ import { ClubLogo } from "./club-logo";
  * Time Ninja's Cube aggregates, which no hosted build can reach; see HANDOFF.md.
  */
 const TABS: Array<{
-  to: "/" | "/stats" | "/meta" | "/ladder" | "/maps" | "/settings";
+  to: "/" | "/stats/" | "/meta/" | "/ladder/" | "/maps/" | "/settings/";
   icon: typeof Users;
   label: StringKey;
   active: (path: string) => boolean;
 }> = [
   { to: "/", icon: Users, label: "nav.club", active: (path) => path === "/" || path.startsWith("/m/") },
-  { to: "/stats", icon: ChartColumn, label: "nav.stats", active: (path) => path.startsWith("/stats") },
-  { to: "/meta", icon: Youtube, label: "nav.meta", active: (path) => path.startsWith("/meta") },
-  { to: "/ladder", icon: Swords, label: "nav.ladder", active: (path) => path.startsWith("/ladder") },
-  { to: "/maps", icon: Map, label: "nav.maps", active: (path) => path.startsWith("/maps") },
-  { to: "/settings", icon: Settings, label: "nav.settings", active: (path) => path.startsWith("/settings") },
+  { to: "/stats/", icon: ChartColumn, label: "nav.stats", active: (path) => path.startsWith("/stats") },
+  { to: "/meta/", icon: Youtube, label: "nav.meta", active: (path) => path.startsWith("/meta") },
+  { to: "/ladder/", icon: Swords, label: "nav.ladder", active: (path) => path.startsWith("/ladder") },
+  { to: "/maps/", icon: Map, label: "nav.maps", active: (path) => path.startsWith("/maps") },
+  { to: "/settings/", icon: Settings, label: "nav.settings", active: (path) => path.startsWith("/settings") },
 ];
 
 export function AppShell({

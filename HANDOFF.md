@@ -16,6 +16,16 @@ Owner decision (23 Sep 2026): **delete / throw away** the old Grok/Vercel host h
 
 Everything below the history marker is the record of how the app got here — starting with the original Grok-export handoff and its BTN 403 investigation. Those sections describe a state that no longer exists; read them as provenance, not as instructions.
 
+## GitHub checkout repair (23 Sep 2026)
+
+The GitHub checkout does not contain Grok's ignored `.grok/app-env.json` or `.grok/skills/og/`. Previously `npm run build` without an explicit flag silently compiled `VITE_AUTH_ENABLED` as unset, which the auth helpers interpret as **on** even though this app does not use accounts. `scripts/with-app-env.mjs` now defaults that flag to `"false"` before applying any file or process overrides; explicit opt-in still wins. GitHub Pages already supplied `"false"` in its build job, but a local/Cloudflare build no longer needs a sandbox-only file to get the same result.
+
+The old `npm test` failure was a test-fixture problem, not 18 product failures: the PWA suite silently read this app's `src/lib/og/site.json` and `public/og.jpg`, other tests expected the missing `.grok` skills or an empty migration directory, and two directory-symlink tests needed privileges Windows does not grant. General PWA tests now use an empty fixture root, CLI/env/migration tests use isolated workspaces, Windows uses directory junctions, and four tests that merely parsed absent skill prose were deleted rather than skipped or re-pinned. **Verified here:** `npm test` passes 205 script tests + 71 TypeScript tests (276 total, zero failures); `npm run typecheck`, `npm run build:pages`, and `npm run build` pass.
+
+The production-browser check caught a real deep-link bug that the root-only smoke missed. On a static host, `/settings` redirects to `/settings/`; with an installed service worker, navigating to `/settings` received the **cached Club HTML** while the client rendered Settings, throwing React hydration error #418. The same happened for Stats, Meta and Data. `public/sw.js` now follows the redirect with a normal same-origin GET, strips the redirected response flag for iOS standalone, caches each successful document at its own request URL rather than replacing the root shell, and bumps the shell cache to v3. The router emits canonical trailing-slash links; all typed Link callers were migrated. `scripts/sw-navigation.test.mjs` covers the redirect, route-specific cache and flag stripping. Verified in a 390×844 production browser: Settings link is `/settings/`; after the worker controls the tab, a direct `/settings` request returns **Settings HTML** (not Club) with zero hydration errors, and offline revisit returns the cached Settings document. Offline JS assets are **not** precached, so that last check is evidence for the HTML cache only, not a promise that the entire app works offline.
+
+The iOS 26 band remains **unverified after the already-shipped `black` status-bar change**: no new physical-device probe was supplied. [Apple's Safari reference](https://developer.apple.com/library/archive/documentation/AppleApplications/Reference/SafariHTMLRef/Articles/MetaTags.html) says both `black` and `default` place web content below the status bar, but that is not evidence for the installed iOS 26 app; do not publish another viewport guess as a fix. Portrait lock is still a WebKit/standalone limitation. The owner will unpublish `n3x.grok.me` personally; this work does not touch that host. A push to `main` automatically updates GitHub Pages; Cloudflare Pages requires its own deploy and is not updated here.
+
 ## History
 
 ### Original handoff (22 Sep 2026): the published site did not load club or meta
@@ -120,7 +130,7 @@ Verified in this session: `tsc --noEmit` clean; 205 tests (`scripts/**` — ten 
 
 Earlier in the same session, before `BRAWL_API_KEY` was set: the dev server and both static hosts served the shell and the honest "Data source is not configured yet (the backend is missing its API key)" state — kept here as the record of what the app does when its key is missing.
 
-`npm test` on this machine: 61 TypeScript tests pass; of the 205 `scripts/**` tests, 18 fail for reasons that predate this work — they assert on the Grok sandbox's `.grok/skills/**` and `.grok/app-env.json`, which are not part of the repository, and two need symlink privileges Windows does not grant by default. Before this session the same command silently ran **zero** of them under cmd; the glob is now double-quoted so both shells expand it.
+Historically, `npm test` on this machine had 61 passing TypeScript tests and 18 failing script tests: they depended on Grok's missing `.grok/skills/**` / `.grok/app-env.json`, the repo's changed baked metadata/migrations, or directory-symlink privileges Windows does not grant by default. The earlier quoted test count was from that session. The GitHub checkout repair above removes those failures; do not treat this historical result as the current test state.
 
 Unofficial companion for Brawl Stars club **'N3X**, tag `#2JYGUQ2P8`. Not affiliated with Supercell or Brawl Time Ninja.
 

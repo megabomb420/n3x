@@ -13,6 +13,10 @@ export function getRouter() {
   return createRouter({
     routeTree,
     basepath: basepath || "/",
+    // Static hosts publish each prerendered route as /route/index.html. Link to
+    // that canonical URL; a host redirect from /route to /route/ otherwise
+    // changes the URL between the streamed HTML and client hydration.
+    trailingSlash: "always",
     defaultErrorComponent: AppErrorComponent,
     defaultPreload: "intent",
     scrollRestoration: false,

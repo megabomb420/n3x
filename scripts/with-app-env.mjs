@@ -11,10 +11,9 @@
  * a secret store, and only `VITE_` vars reach the browser anyway. A real
  * `process.env` entry always wins, so an explicit override still works.
  *
- * That precedence also means the file governs this workspace only. A deployed
- * build runs with the provider's project env, where the deployer sets
- * `VITE_AUTH_ENABLED` itself (today unconditionally `"true"`), so the deployed
- * flag is the platform's, not this file's.
+ * That precedence also means the file governs this workspace only. This app
+ * ships with auth off even without Grok's ignored `.grok/app-env.json`; an
+ * explicit `VITE_AUTH_ENABLED=true` opts in for a different deployment.
  *
  * Vite picks the values up because `loadEnv` prefix-matches entries already in
  * `process.env`, which is why the merge has to happen before Vite starts.
@@ -31,8 +30,8 @@ const VITE_PREFIX = "VITE_";
 
 /**
  * Parse an app-env document, keeping only `VITE_`-prefixed string entries.
- * Anything unparseable is an empty environment — a workspace without the file
- * must behave exactly like today (auth on, no overrides).
+ * Anything unparseable is an empty file environment. Auth-off is supplied by
+ * `mergeAppEnv`, not by a sandbox-only file.
  */
 export function parseAppEnv(text) {
   let parsed;
@@ -60,9 +59,9 @@ export function readAppEnv(root) {
   }
 }
 
-/** File values under the process environment: an explicit override wins. */
+/** Auth is off for this app unless an explicit file or process setting opts in. */
 export function mergeAppEnv(appEnv, processEnv) {
-  return { ...appEnv, ...processEnv };
+  return { VITE_AUTH_ENABLED: "false", ...appEnv, ...processEnv };
 }
 
 /**

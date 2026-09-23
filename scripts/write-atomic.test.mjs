@@ -149,9 +149,9 @@ test("cli: hands the file over, and refuses a temp staged in public/", () => {
 });
 
 test("cli: relative paths follow the script's root, not the caller's cwd", () => {
-  // Same relative pair the skill documents, run from a workspace that has its
-  // own public/: resolving against cwd would take the staged temp out of the
-  // directory the refusal is defined against and move it.
+  // A relative pair naming a temp inside the caller's own public/, run from
+  // that workspace: resolving against cwd would take the staged temp out of
+  // the directory the refusal is defined against and move it.
   const root = makeWorkspace();
   writeFileSync(join(root, "public/og.jpg.tmp"), "half a JPEG");
   const run = spawnSync(process.execPath, [SCRIPT, "public/og.jpg.tmp", "public/og.jpg"], {
@@ -162,29 +162,6 @@ test("cli: relative paths follow the script's root, not the caller's cwd", () =>
   assert.match(run.stderr, /stage outside/);
   assert.equal(readFileSync(join(root, "public/og.jpg.tmp"), "utf8"), "half a JPEG");
   assert.equal(existsSync(join(root, "public/og.jpg")), false);
-});
-
-test("every hand-over the og skill prints is one this script accepts", () => {
-  // The card and banner recipes live in the skill's references/, not SKILL.md.
-  const skillDir = join(TEMPLATE_ROOT, ".grok/skills/og");
-  const docs = [
-    join(skillDir, "SKILL.md"),
-    ...readdirSync(join(skillDir, "references")).map((f) => join(skillDir, "references", f)),
-  ];
-  const invocations = docs.flatMap(
-    (path) => readFileSync(path, "utf8").match(/node scripts\/write-atomic\.mjs[^\n`]*/g) ?? [],
-  );
-  assert.ok(invocations.length >= 3, "og.jpg, x-banner.jpg and site.json each hand over");
-  for (const line of invocations) {
-    const argv = line.replace("node scripts/write-atomic.mjs", "").trim().split(/\s+/);
-    const args = parseWriteAtomicArgs(argv);
-    assert.equal(args.error, undefined, line);
-    assert.equal(
-      stagingError({ staged: args.staged, target: args.target, publicDir: "/workspace/public" }),
-      null,
-      line,
-    );
-  }
 });
 
 test("cli: a missing staged file fails without touching the target", () => {
