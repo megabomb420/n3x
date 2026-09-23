@@ -113,8 +113,9 @@ export function AppShell({
    *
    * `100lvh` versus `innerHeight` separates "the layout is short" from "the
    * layout is the whole screen"; `env(safe-area-inset-top)` says whether the
-   * status bar is over our content. Measured on an iPhone 17 Pro / iOS 26:
-   * `inner`/`doc` 812, `lvh` 874, insets 62/34.
+   * status bar is over our content. The old `viewport-fit=cover` installation
+   * on an iPhone 17 Pro / iOS 27 had `inner`/`doc` 812, `lvh` 874,
+   * insets 62/34; automatic viewport insetting is now under device test.
    */
   useEffect(() => {
     const root = document.documentElement;

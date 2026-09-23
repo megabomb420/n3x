@@ -16,8 +16,10 @@ export const Route = createRootRoute({
       { charSet: "utf-8" },
       {
         name: "viewport",
+        // Let WebKit inset the viewport instead of requesting edge-to-edge
+        // layout that left the installed iOS app with an orphan bottom band.
         content:
-          "width=device-width, initial-scale=1, minimum-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover",
+          "width=device-width, initial-scale=1, minimum-scale=1, maximum-scale=1, user-scalable=no",
       },
       { title: APP_NAME },
       {
@@ -29,9 +31,7 @@ export const Route = createRootRoute({
       { name: "color-scheme", content: "dark" },
       { name: "apple-mobile-web-app-capable", content: "yes" },
       { name: "mobile-web-app-capable", content: "yes" },
-      // Match the installed AnimeBuddy chrome for the iPhone comparison.
-      // WebKit may retain the status-bar mode chosen when the icon was added.
-      { name: "apple-mobile-web-app-status-bar-style", content: "black-translucent" },
+      { name: "apple-mobile-web-app-status-bar-style", content: "black" },
       { name: "apple-mobile-web-app-title", content: APP_NAME },
     ],
     links: [
