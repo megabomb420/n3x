@@ -21,12 +21,32 @@ const TABS: Array<{
   label: StringKey;
   active: (path: string) => boolean;
 }> = [
-  { to: "/", icon: Users, label: "nav.club", active: (path) => path === "/" || path.startsWith("/m/") },
-  { to: "/stats/", icon: ChartColumn, label: "nav.stats", active: (path) => path.startsWith("/stats") },
+  {
+    to: "/",
+    icon: Users,
+    label: "nav.club",
+    active: (path) => path === "/" || path.startsWith("/m/"),
+  },
+  {
+    to: "/stats/",
+    icon: ChartColumn,
+    label: "nav.stats",
+    active: (path) => path.startsWith("/stats"),
+  },
   { to: "/meta/", icon: Youtube, label: "nav.meta", active: (path) => path.startsWith("/meta") },
-  { to: "/ladder/", icon: Swords, label: "nav.ladder", active: (path) => path.startsWith("/ladder") },
+  {
+    to: "/ladder/",
+    icon: Swords,
+    label: "nav.ladder",
+    active: (path) => path.startsWith("/ladder"),
+  },
   { to: "/maps/", icon: Map, label: "nav.maps", active: (path) => path.startsWith("/maps") },
-  { to: "/settings/", icon: Settings, label: "nav.settings", active: (path) => path.startsWith("/settings") },
+  {
+    to: "/settings/",
+    icon: Settings,
+    label: "nav.settings",
+    active: (path) => path.startsWith("/settings"),
+  },
 ];
 
 export function AppShell({
@@ -47,9 +67,14 @@ export function AppShell({
     await queryClient.invalidateQueries();
   }, [queryClient]);
   const { pull, refreshing, threshold } = usePullToRefresh(mainRef, refresh);
-  /** The refreshing hold keeps the column open while the queries settle. */
+  /**
+   * The hold keeps the pill in place while the queries settle. Swipe distance
+   * only ever moves the pill: the column itself stays where it is, so the first
+   * card sits exactly under the header line in every state, not just at rest.
+   */
   const offset = refreshing ? 44 : pull;
   const dragging = pull > 0 && !refreshing;
+  const pillShift = Math.min(offset, 44) - 26;
 
   useEffect(() => {
     if (import.meta.env.PROD && "serviceWorker" in navigator) {
@@ -89,7 +114,9 @@ export function AppShell({
       "position:absolute;left:-9999px;width:1px;height:100lvh;padding-top:env(safe-area-inset-top, 0px)";
     const sync = () => {
       if (!ruler.isConnected) document.body.append(ruler);
-      const standalone = matchMedia("(display-mode: standalone), (display-mode: fullscreen)").matches;
+      const standalone = matchMedia(
+        "(display-mode: standalone), (display-mode: fullscreen)",
+      ).matches;
       const visible = Math.max(window.innerHeight, window.visualViewport?.height ?? 0);
       const style = getComputedStyle(ruler);
       const screen = parseFloat(style.height) || 0;
@@ -120,7 +147,8 @@ export function AppShell({
     // iOS ignores the manifest's `orientation` and refuses `lock()` outside
     // fullscreen, so this only lands on platforms that support it. A rejection
     // is the normal case, not an error.
-    const orientation = window.screen?.orientation as (ScreenOrientation & { lock?: (o: string) => Promise<void> }) | undefined;
+    const orientation = window.screen?.orientation as
+      (ScreenOrientation & { lock?: (o: string) => Promise<void> }) | undefined;
     void orientation?.lock?.("portrait")?.catch(() => undefined);
   }, []);
 
@@ -146,9 +174,9 @@ export function AppShell({
       <div className="relative min-h-0 flex-1 overflow-hidden">
         <div
           aria-hidden
-          className="pointer-events-none absolute inset-x-0 top-0 flex justify-center"
+          className="pointer-events-none absolute inset-x-0 top-0 z-10 flex justify-center"
           style={{
-            transform: `translateY(${offset - 26}px)`,
+            transform: `translateY(${pillShift}px)`,
             opacity: refreshing ? 1 : Math.min(1, pull / threshold),
             transition: dragging ? "none" : "transform 200ms ease-out, opacity 200ms ease-out",
           }}
@@ -166,14 +194,7 @@ export function AppShell({
           </span>
         </div>
 
-        <main
-          ref={mainRef}
-          className="h-full overflow-y-auto overscroll-contain pb-3"
-          style={{
-            transform: offset ? `translateY(${offset}px)` : undefined,
-            transition: dragging ? "none" : "transform 200ms ease-out",
-          }}
-        >
+        <main ref={mainRef} className="h-full overflow-y-auto overscroll-contain pb-3">
           {children}
         </main>
       </div>
