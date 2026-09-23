@@ -18,7 +18,7 @@ const LOG_TTL_MS = 5 * 60_000;
 const BUNDLE_TTL_MS = 10 * 60_000;
 const RANKED_TTL_MS = 10 * 60_000;
 const LOG_CONCURRENCY = 6;
-const RANKED_CONCURRENCY = 3;
+const RANKED_CONCURRENCY = 6;
 const MAX_MEMBERS = 30;
 /** Bumped when a stored shape changes, so an old payload is never re-read. */
 const CACHE_TAG = "v3";
@@ -69,7 +69,10 @@ async function loadMemberBattles(tag: string): Promise<PlayerBattle[]> {
  * endpoint publishes trophies only. Batched, and cached for ten minutes so
  * reopening the list does not hammer the Worker with 25 profiles.
  */
-export async function loadMemberRanked(tags: string[]): Promise<MemberRanked[]> {
+export async function loadMemberRanked(
+  tags: string[],
+  onProgress?: (soFar: MemberRanked[]) => void,
+): Promise<MemberRanked[]> {
   const out: MemberRanked[] = tags.map((tag) => ({ tag, elo: null, rankName: null }));
 
   for (let index = 0; index < tags.length; index += RANKED_CONCURRENCY) {
@@ -91,6 +94,9 @@ export async function loadMemberRanked(tags: string[]): Promise<MemberRanked[]> 
       }),
     );
     for (const result of results) out[result.at] = result.value;
+    // A profile takes a second or two, so the board fills in as batches land
+    // instead of showing skeletons for the whole run.
+    onProgress?.([...out]);
   }
   return out;
 }

@@ -126,7 +126,8 @@ Unofficial companion for Brawl Stars club **'N3X**, tag `#2JYGUQ2P8`. Not affili
 
 | Tab | Route | Job |
 |---|---|---|
-| Club | `/` | Live roster. Tap a member (`/m/$tag`) for trophies, Ranked ELO, top brawlers, recent battles. Join/leave log. |
+| Club | `/` | Live roster and join/leave log, then the **Ranked board**: every member's tier and Elo, read from their own profile (lazily, six at a time, when the board is scrolled into view) and sorted by Elo. Tap a member (`/m/$tag`) for trophies, Ranked ELO, top brawlers, recent battles. |
+| Stats | `/stats` | What the club plays: brawlers, modes and maps from the members' own battle logs, with queue (All/Ladder/Ranked) and range filters. No Elo here on purpose — Ranked standings are the club tab's board, and the API publishes no per-battle Elo delta. |
 | Meta | `/meta` | Ladder vs Ranked, kept separate. Ranked filters are league floors (Gold+ … Masters+), **not** brawler trophies. |
 | Maps | `/maps` | Maps with recent battles and best brawlers. |
 

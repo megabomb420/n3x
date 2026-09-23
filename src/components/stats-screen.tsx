@@ -7,10 +7,7 @@ import {
   STATS_RANGES,
   aggregateBattles,
   loadClubLogs,
-  loadMemberRanked,
   rangeStart,
-  type ClubLogs,
-  type MemberRanked,
   type MetaQueue,
   type MetaRow,
   type StatsRange,
@@ -23,7 +20,6 @@ import { useOnline } from "@/hooks/use-online";
 import { cn } from "@/lib/utils";
 import { Portrait } from "./portrait";
 import { EmptyState, ErrorState, OfflineBanner, SkeletonRows } from "./state-views";
-import { PlayerIcon } from "./player-icon";
 import { TabButtons } from "./tab-buttons";
 
 const QUEUES: Array<{ id: MetaQueue; label: StringKey }> = [
@@ -69,7 +65,6 @@ export function StatsScreen() {
   const [memberTag, setMemberTag] = useState(CLUB);
   const [prefsReady, setPrefsReady] = useState(false);
   const [sort, setSort] = useState<"picks" | "winRate">("picks");
-  const [view, setView] = useState<"brawlers" | "members">("brawlers");
   const query = useQuery({
     queryKey: ["club-logs"],
     queryFn: loadClubLogs,
@@ -77,14 +72,6 @@ export function StatsScreen() {
   });
   const catalog = useQuery({ queryKey: ["catalog"], queryFn: loadCatalog }).data ?? null;
   const bundle = query.data;
-
-  /** Ranked standing is one profile per member, so it is only read on demand. */
-  const ranked = useQuery({
-    queryKey: ["member-ranked", bundle?.members.map((entry) => entry.tag).join(",") ?? ""],
-    queryFn: () => loadMemberRanked(bundle?.members.map((entry) => entry.tag) ?? []),
-    enabled: view === "members" && (bundle?.members.length ?? 0) > 0,
-    staleTime: 10 * 60_000,
-  });
 
   useEffect(() => {
     const savedQueue = readPref(QUEUE_KEY);
@@ -169,18 +156,7 @@ export function StatsScreen() {
         options={STATS_RANGES.map((entry) => ({ id: entry.id, label: t(`stats.range.${entry.id}` as const) }))}
       />
 
-      <TabButtons
-        label={t("nav.stats")}
-        value={view}
-        onChange={setView}
-        options={[
-          { id: "brawlers", label: t("stats.brawlers") },
-          { id: "members", label: t("stats.members") },
-        ]}
-      />
-
-      {view === "brawlers" ? (
-        <label className="flex items-center gap-2 rounded-xl bg-surface px-3 py-2">
+      <label className="flex items-center gap-2 rounded-xl bg-surface px-3 py-2">
           <span className="shrink-0 text-xs uppercase tracking-wider text-subtle">{t("stats.player")}</span>
           <select
             value={member ? member.tag : CLUB}
@@ -195,8 +171,7 @@ export function StatsScreen() {
               </option>
             ))}
           </select>
-        </label>
-      ) : null}
+      </label>
 
       <section className="rounded-2xl bg-surface p-4">
         <div className="flex items-start justify-between gap-3">
@@ -218,7 +193,7 @@ export function StatsScreen() {
         <dl className="mt-3 grid grid-cols-3 gap-2 text-center">
           <Stat label={t("stats.wins")} value={meta.wins.toLocaleString("en-GB")} />
           <Stat
-            label={member ? t("stats.role") : t("stats.members")}
+            label={member ? t("stats.role") : t("club.members")}
             value={member ? roleLabel(member.role) : String(meta.members)}
             hint={!member && bundle.unavailable > 0 ? `${bundle.unavailable}` : undefined}
           />
@@ -243,14 +218,11 @@ export function StatsScreen() {
           <p>{t("stats.legend.picks")}</p>
           <p>{t("stats.legend.winRate")}</p>
           <p>{t("stats.legend.smallSample", { low: LOW_SAMPLE })}</p>
-          {view === "members" ? <p>{t("stats.legend.members")}</p> : null}
           <p className="text-subtle">{t("stats.legend.more")}</p>
         </div>
       </details>
 
-      {view === "members" ? (
-        <MemberList bundle={bundle} queue={queue} range={range} ranked={ranked.data ?? null} loading={ranked.isLoading} />
-      ) : meta.battles === 0 ? (
+      {meta.battles === 0 ? (
         <EmptyState
           title={t("stats.empty.title")}
           body={
@@ -266,7 +238,7 @@ export function StatsScreen() {
               <h2 className="font-display text-lg tracking-wide">{t("stats.brawlers")}</h2>
               <div className="w-44 shrink-0">
                 <TabButtons
-                  label={t("stats.winRateSort")}
+                  label={t("stats.brawlers")}
                   value={sort}
                   onChange={setSort}
                   options={[
@@ -294,108 +266,6 @@ export function StatsScreen() {
 
       <p className="pb-2 text-[11px] leading-relaxed text-subtle">{t("stats.note", { low: LOW_SAMPLE })}</p>
     </div>
-  );
-}
-
-/** Every member's window, plus the Ranked standing their profile reports. */
-function MemberList({
-  bundle,
-  queue,
-  range,
-  ranked,
-  loading,
-}: {
-  bundle: ClubLogs;
-  queue: MetaQueue;
-  range: StatsRange;
-  ranked: MemberRanked[] | null;
-  loading: boolean;
-}) {
-  const t = useT();
-  const roleLabel = useRoleLabel();
-  const since = rangeStart(range, Date.now());
-  const elo = queue === "ranked";
-
-  const rows = useMemo(() => {
-    const scored = bundle.members.map((member) => {
-      const stats = aggregateBattles(bundle.logs, queue, { tag: member.tag, sinceMs: since });
-      return {
-        member,
-        battles: stats.battles,
-        winRate: stats.winRate,
-        change: stats.brawlers.reduce((sum, row) => sum + changeOf(row).value, 0),
-        changeKnown: stats.brawlers.reduce((sum, row) => sum + changeOf(row).known, 0),
-      };
-    });
-    // Ranked publishes no delta, so that queue sorts on the standing instead.
-    const eloOf = (tag: string) => ranked?.find((entry) => entry.tag === tag)?.elo ?? -1;
-    return elo
-      ? scored.sort((a, b) => eloOf(b.member.tag) - eloOf(a.member.tag) || b.battles - a.battles)
-      : scored.sort(
-          (a, b) => b.change - a.change || b.battles - a.battles || a.member.name.localeCompare(b.member.name),
-        );
-  }, [bundle, queue, since, elo, ranked]);
-
-  return (
-    <section>
-      <div className="mb-1.5 flex items-baseline justify-between gap-3">
-        <h2 className="font-display text-lg tracking-wide">{t("stats.members")}</h2>
-        <p className="text-right text-[11px] text-subtle">{t("stats.members.note")}</p>
-      </div>
-      <div className="mb-1 flex items-center gap-3 px-3 text-[10px] uppercase tracking-wider text-subtle">
-        <span className="w-9 shrink-0" />
-        <span className="flex-1" />
-        <span className="w-24 shrink-0 text-right">{elo ? t("stats.tier") : t("stats.trophies")}</span>
-        <span className="w-16 shrink-0 text-right">ELO</span>
-      </div>
-      <ul className="flex flex-col gap-1.5">
-        {rows.map(({ member, battles, winRate, change, changeKnown }) => {
-          const standing = ranked?.find((entry) => entry.tag === member.tag) ?? null;
-          const tier = standing?.rankName ?? (loading ? "…" : "—");
-          return (
-            <li key={member.tag} className="flex items-center gap-3 rounded-xl bg-surface px-3 py-2">
-              <PlayerIcon src={member.iconUrl} name={member.name} size={36} />
-              <div className="min-w-0 flex-1">
-                <div className="flex items-baseline gap-1.5">
-                  <p className="truncate text-sm text-fg">{member.name}</p>
-                  {standing?.rankName && !elo ? (
-                    <span className="shrink-0 text-[10px] tracking-wide text-gold">{standing.rankName}</span>
-                  ) : null}
-                </div>
-                <p className="truncate text-[11px] text-muted">
-                  {roleLabel(member.role)}
-                  {battles > 0 ? ` · ${battles} ${t("stats.battlesShort")} · ${pct(winRate)}` : ""}
-                </p>
-              </div>
-              <div className="w-24 shrink-0 text-right">
-                {/* Ranked is a tier, not a number: MYTHIC I, SILVER II… */}
-                {elo ? (
-                  <p className="truncate text-xs text-fg">{tier}</p>
-                ) : (
-                  <>
-                    <p className="tabular text-sm text-fg">{formatTrophies(member.trophies)}</p>
-                    <p
-                      className={cn(
-                        "tabular text-[10px]",
-                        changeKnown === 0 ? "text-subtle" : change >= 0 ? "text-win" : "text-danger",
-                      )}
-                    >
-                      {changeKnown === 0 ? "—" : signed(change)}
-                    </p>
-                  </>
-                )}
-              </div>
-              <div className="w-16 shrink-0 text-right">
-                <p className="tabular text-sm text-fg">
-                  {standing?.elo != null ? formatTrophies(standing.elo) : loading ? "…" : "—"}
-                </p>
-                <p className="text-[10px] text-subtle">ELO</p>
-              </div>
-            </li>
-          );
-        })}
-      </ul>
-    </section>
   );
 }
 

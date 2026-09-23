@@ -56,6 +56,10 @@ export const STRINGS = {
     "state.player.body": "Could not load this profile.",
 
     "club.members": "Members",
+    "club.ranked": "Ranked",
+    "club.rankedHint": "Sorted by Ranked Elo. The tier and Elo come from each member's own profile.",
+    "club.rankedNone": "no Ranked standing",
+    "club.rankedLoading": "reading profiles…",
     "club.trophies": "Trophies",
     "club.required": "Required",
     "club.search": "Search members",
@@ -87,14 +91,8 @@ export const STRINGS = {
     "stats.battles": "Battles analysed",
     "stats.winRate": "Win rate",
     "stats.wins": "Wins",
-    "stats.members": "Members",
     "stats.trophies": "Trophies",
-    "stats.tier": "Tier",
     "stats.battlesShort": "battles",
-    "stats.members.note":
-      "Sorted by what they gained in this window — trophies from ladder battles. In the Ranked queue the list sorts by current Elo instead, because Ranked battles publish no delta.",
-    "stats.legend.members":
-      "Members — in the Ladder and All queues the left column is their trophies now, with the window's gain under it (trophies from ladder battles; Ranked publishes no delta). In the Ranked queue that column is their tier instead — MYTHIC I, SILVER II — and the right one is their current Ranked Elo; both come from their own profile, and a dash means the profile did not answer.",
     "stats.role": "Role",
     "stats.window": "Window",
     "stats.brawlers": "Brawlers",
@@ -250,6 +248,10 @@ export const STRINGS = {
     "state.player.body": "Nie udało się pobrać tego profilu.",
 
     "club.members": "Członkowie",
+    "club.ranked": "Ranked",
+    "club.rankedHint": "Sortowane po Elo w Ranked. Ranga i Elo pochodzą z profilu każdego członka.",
+    "club.rankedNone": "brak danych o Ranked",
+    "club.rankedLoading": "czytam profile…",
     "club.trophies": "Puchary",
     "club.required": "Wymagane",
     "club.search": "Szukaj członków",
@@ -281,14 +283,8 @@ export const STRINGS = {
     "stats.battles": "Przeanalizowane bitwy",
     "stats.winRate": "Win rate",
     "stats.wins": "Wygrane",
-    "stats.members": "Członkowie",
     "stats.trophies": "Puchary",
-    "stats.tier": "Ranga",
     "stats.battlesShort": "bitew",
-    "stats.members.note":
-      "Sortowani po tym, ile wbili w tym zakresie — puchary z bitew pucharowych. W kolejce rankingowej lista sortuje się po aktualnym Elo, bo bitwy rankingowe nie publikują zmiany.",
-    "stats.legend.members":
-      "Członkowie — w kolejkach pucharowej i „Wszystkie” lewa kolumna to puchary teraz, a pod nią bilans z zakresu (puchary z bitew pucharowych; rankingowe nie publikują zmiany). W kolejce rankingowej ta kolumna pokazuje rangę — MYTHIC I, SILVER II — a prawa aktualne Elo w Ranked; jedno i drugie pochodzi z własnego profilu, a myślnik oznacza, że profil nie odpowiedział.",
     "stats.role": "Rola",
     "stats.window": "Okres",
     "stats.brawlers": "Zadymiarze",

@@ -10,6 +10,7 @@ import { formatRelative, formatTrophies } from "@/lib/meta/format";
 import { useOnline } from "@/hooks/use-online";
 import { cn } from "@/lib/utils";
 import { PlayerIcon } from "./player-icon";
+import { RankedBoard } from "./ranked-board";
 import { EmptyState, ErrorState, OfflineBanner, SkeletonRows } from "./state-views";
 
 const TYPE_KEYS: Record<string, StringKey> = {
@@ -118,6 +119,8 @@ export function ClubScreen() {
               </ul>
             )}
           </section>
+
+          {members.length > 0 ? <RankedBoard members={members} /> : null}
         </>
       ) : null}
     </div>
