@@ -14,6 +14,8 @@ function AboutPage() {
           <ChevronLeft className="size-4" /> {t("common.back")}
         </Link>
         <p className="text-[11px] text-subtle">{t("about.note")}</p>
+        <LayoutReport />
+
         <section>
           <h2 className="font-display text-2xl tracking-wide text-fg">Data / methodology</h2>
           <p className="mt-2">
@@ -182,5 +184,23 @@ function AboutPage() {
         </section>
       </article>
     </AppShell>
+  );
+}
+
+/** One tap from the header pill: the numbers an installed-app screenshot needs. */
+function LayoutReport() {
+  return (
+    <section>
+      <h3 className="font-medium text-fg">Viewport report</h3>
+      <p className="mt-2">
+        The installed app is the only place iOS reports the heights it actually gives the page.{" "}
+        <a href={`${import.meta.env.BASE_URL}?diag=1`} className="underline text-fg">
+          Open the layout probe
+        </a>{" "}
+        to see them: it prints the visual and layout viewports, `100lvh`, the safe-area insets and where
+        the app column ends, and it outlines the column in magenta against the layout viewport in cyan.
+        It draws nothing without `?diag=1`.
+      </p>
+    </section>
   );
 }

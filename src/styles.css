@@ -42,7 +42,7 @@
 
   html,
   body {
-    height: 100%;
+    height: var(--app-h, 100%);
     overflow: hidden;
   }
 
@@ -125,7 +125,7 @@
 }
 @media (display-mode: standalone), (display-mode: fullscreen) {
   .safe-top {
-    padding-top: calc(env(safe-area-inset-top, 0px) + 0.75rem);
+    padding-top: calc(env(safe-area-inset-top, 0px) + 1.1rem);
   }
   .safe-bottom {
     padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 0.25rem);

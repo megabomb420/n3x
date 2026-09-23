@@ -49,6 +49,35 @@ export function AppShell({
     mainRef.current?.scrollTo({ top: 0 });
   }, [pathname]);
 
+  /**
+   * iOS 26 standalone hands the document a layout viewport that is shorter than
+   * the screen (it subtracts the safe-area insets) while the web view still
+   * paints the whole screen — the header lands under the status bar, and the
+   * column stops ~96 pt early, leaving a dead band under the nav. `100svh` and
+   * `height: 100%` both resolve to that short viewport, so measure the visible
+   * one and grow only when it is genuinely taller. Browsers (Safari's toolbars)
+   * are left alone.
+   */
+  useEffect(() => {
+    const root = document.documentElement;
+    const sync = () => {
+      const standalone = matchMedia("(display-mode: standalone), (display-mode: fullscreen)").matches;
+      const visible = Math.max(window.innerHeight, window.visualViewport?.height ?? 0);
+      if (standalone && visible > root.clientHeight + 1) {
+        root.style.setProperty("--app-h", `${Math.round(visible)}px`);
+      } else {
+        root.style.removeProperty("--app-h");
+      }
+    };
+    sync();
+    window.addEventListener("resize", sync);
+    window.visualViewport?.addEventListener("resize", sync);
+    return () => {
+      window.removeEventListener("resize", sync);
+      window.visualViewport?.removeEventListener("resize", sync);
+    };
+  }, []);
+
   return (
     <div className="mx-auto flex h-full max-w-lg flex-col overflow-hidden bg-bg text-fg">
       <header className="shrink-0 border-b border-border bg-bg safe-top">

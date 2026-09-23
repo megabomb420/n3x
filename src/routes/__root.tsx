@@ -2,6 +2,7 @@ import { createRootRoute, HeadContent, Outlet, Scripts } from "@tanstack/react-r
 import { AuthProvider } from "@/lib/auth/provider";
 import { LanguageProvider } from "@/lib/i18n/provider";
 import { PreviewHostBridge } from "@/components/preview-host-bridge";
+import { LayoutProbe } from "@/components/layout-probe";
 import { AppProviders } from "@/components/app-providers";
 import appCss from "../styles.css?url";
 
@@ -51,6 +52,7 @@ function RootDocument() {
       </head>
       <body className="bg-bg text-fg">
         <PreviewHostBridge />
+        <LayoutProbe />
         <AuthProvider>
           <LanguageProvider>
             <AppProviders>
