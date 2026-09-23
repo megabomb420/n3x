@@ -28,7 +28,12 @@ BG = (5, 7, 10)  # --color-bg, so the icon tile melts into the app chrome
 PUBLIC = Path(__file__).resolve().parent.parent / "public"
 LIT = 40  # luminance of the solid artwork; keeps the faint caption out of the box
 GLOW = 0.06  # the sprite keeps this much of its own height of surrounding glow
-STAR_ROW_SPLIT = 443  # last star row in og.jpg; the wordmark starts underneath
+# Measured on og.jpg: the star's top point ends here, its horizontal axis (the row
+# through the left and right points) is below it, and the last row that is star
+# and nothing else is where the `'N3X` wordmark's glow starts.
+STAR_APEX_ROW = 48
+STAR_AXIS_ROW = 287
+STAR_LAST_ROW = 438
 WORDMARK_ROW_END = 599  # the `N3X GUILD` caption sits below this row
 
 OUTPUTS: list[tuple[str, int, str, float]] = [
@@ -41,6 +46,50 @@ OUTPUTS: list[tuple[str, int, str, float]] = [
     ("__grok/icon-180.png", 180, "lockup", 0.62),
     ("n3x-mark.png", 256, "star", 0.76),
 ]
+
+
+def complete_tip(star: Image.Image, axis: int, apex: int, cut: int) -> Image.Image:
+    """Rebuild the star's lower point, which the artwork hides behind the wordmark.
+
+    In `og.jpg` the point descends *behind* the `'N3X` letters: the last row that
+    is star and nothing else is `cut`, and below it the artwork is wordmark. The
+    star is symmetric about its horizontal axis — measured on the 1500 px
+    original, the two halves agree within 3 px — so the missing rows are the top
+    point's own rows, mirrored. Only that point's silhouette is copied, through
+    the centre column, so no letter pixel can enter the sprite.
+    """
+    end = 2 * axis - apex  # where the mirrored tip reaches its point
+    tall = Image.new("RGB", (star.width, end + 1), BG)
+    tall.paste(star, (0, 0))
+    mask = star.convert("L").point(lambda value: 255 if value > LIT else 0)
+    pixels = tall.load()
+    centre = star.width // 2
+    for y in range(cut + 1, end + 1):
+        source_row = 2 * axis - y
+        left = centre
+        while left > 0 and mask.getpixel((left - 1, source_row)) > 0:
+            left -= 1
+        right = centre
+        while right < star.width - 1 and mask.getpixel((right + 1, source_row)) > 0:
+            right += 1
+        if right - left < 1:
+            continue
+        strip = star.crop((left, source_row, right + 1, source_row + 1))
+        tall.paste(strip, (left, y))
+    return tall
+
+
+def on_background(sprite: Image.Image, threshold: int = 14) -> Image.Image:
+    """Flatten the artwork's own black onto BG.
+
+    og.jpg has a vignette — its corners sit at (6,7,11) and its lower edge at
+    (3,4,5) — so a sprite pasted as-is shows up as a rectangle against the app's
+    (5,7,10). Everything this dark is background, not artwork.
+    """
+    mask = sprite.convert("L").point(lambda value: 255 if value <= threshold else 0)
+    flattened = sprite.copy()
+    flattened.paste(BG, mask=mask)
+    return flattened
 
 
 def content_box(img: Image.Image, box: tuple[int, int, int, int]) -> tuple[int, int, int, int]:
@@ -88,12 +137,18 @@ def compose(
 
 def main() -> int:
     source = Image.open(PUBLIC / "og.jpg").convert("RGB")
-    star = source.crop(content_box(source, (0, 0, source.width, STAR_ROW_SPLIT)))
-    wordmark = source.crop(
-        content_box(source, (0, STAR_ROW_SPLIT + 1, source.width, WORDMARK_ROW_END))
+    apex = 0  # the sprite's own coordinates: it starts at the star's tip row
+    axis = STAR_AXIS_ROW - STAR_APEX_ROW
+    cut = STAR_LAST_ROW - STAR_APEX_ROW
+    raw_star = source.crop((0, STAR_APEX_ROW, source.width, STAR_LAST_ROW + 1))
+    star = on_background(
+        raw_star.crop(content_box(complete_tip(raw_star, axis, apex, cut), (0, 0, raw_star.width, 2 * axis + 1)))
+    )
+    wordmark = on_background(
+        source.crop(content_box(source, (0, STAR_LAST_ROW + 1, source.width, WORDMARK_ROW_END)))
     )
     print(f"og.jpg          {source.size[0]}x{source.size[1]}")
-    print(f"star sprite     {star.size[0]}x{star.size[1]}")
+    print(f"star sprite     {star.size[0]}x{star.size[1]}  (tip rebuilt to row {2 * axis})")
     print(f"wordmark sprite {wordmark.size[0]}x{wordmark.size[1]}")
 
     lockup = [(star, 1.0), (wordmark, 1.0)]

@@ -107,34 +107,44 @@ export function ClubScreen() {
 
       {club ? (
         <>
-          <section className="rounded-2xl bg-surface p-4">
-            <div className="flex items-start justify-between gap-3">
-              <div className="min-w-0">
-                <p className="text-xs uppercase tracking-wider text-subtle">#{club.tag}</p>
-                <p className="mt-1 text-sm leading-relaxed text-muted">
-                  {club.description || t("club.descriptionFallback")}
-                </p>
+          <section className="relative overflow-hidden rounded-2xl bg-surface p-4">
+            {/* A wash of the app's accent from the top-left corner, gone by the
+                middle of the card: the numbers and the description stay on
+                plain surface, and the card's radius clips it exactly. */}
+            <span
+              aria-hidden
+              className="pointer-events-none absolute inset-0 bg-gradient-to-br from-gold/[0.13] via-transparent to-transparent"
+            />
+            {/* Positioned, so every line reads above the wash rather than under it. */}
+            <div className="relative">
+              <div className="flex items-start justify-between gap-3">
+                <div className="min-w-0">
+                  <p className="text-xs uppercase tracking-wider text-subtle">#{club.tag}</p>
+                  <p className="mt-1 text-sm leading-relaxed text-muted">
+                    {club.description || t("club.descriptionFallback")}
+                  </p>
+                </div>
+                {typeKey ? (
+                  <p className="shrink-0 rounded-full bg-surface-2 px-2 py-1 text-[11px] text-muted">
+                    {t(typeKey)}
+                  </p>
+                ) : null}
               </div>
-              {typeKey ? (
-                <p className="shrink-0 rounded-full bg-surface-2 px-2 py-1 text-[11px] text-muted">
-                  {t(typeKey)}
-                </p>
-              ) : null}
+              <dl className="mt-3 grid grid-cols-3 gap-2 text-center">
+                <Stat label={t("club.members")} value={`${club.memberCount}`} />
+                <Stat label={t("club.trophies")} value={formatTrophies(club.trophies)} />
+                <Stat label={t("club.required")} value={formatTrophies(club.requiredTrophies)} />
+              </dl>
+              <p className="mt-3 flex items-center gap-1.5 text-xs text-muted">
+                <Trophy className="size-3.5 shrink-0 text-gold" />
+                {plRank}
+              </p>
+              <p className="mt-3 flex items-center gap-1 text-[11px] text-subtle">
+                <Clock className="size-3" />
+                {t("common.updated", { when: formatRelative(club.fetchedAt) })}
+                {query.data?.source ? ` · ${query.data.source}` : ""}
+              </p>
             </div>
-            <dl className="mt-3 grid grid-cols-3 gap-2 text-center">
-              <Stat label={t("club.members")} value={`${club.memberCount}`} />
-              <Stat label={t("club.trophies")} value={formatTrophies(club.trophies)} />
-              <Stat label={t("club.required")} value={formatTrophies(club.requiredTrophies)} />
-            </dl>
-            <p className="mt-3 flex items-center gap-1.5 text-xs text-muted">
-              <Trophy className="size-3.5 shrink-0 text-gold" />
-              {plRank}
-            </p>
-            <p className="mt-3 flex items-center gap-1 text-[11px] text-subtle">
-              <Clock className="size-3" />
-              {t("common.updated", { when: formatRelative(club.fetchedAt) })}
-              {query.data?.source ? ` · ${query.data.source}` : ""}
-            </p>
           </section>
 
           {/* The roster leads, right under the club's own card. The Ranked board
