@@ -108,6 +108,22 @@ The owner read "P11 · Ranga 6 · HC" on a member page and had no idea what it w
 
 Prestige was not in the app at all. The official API publishes `brawlers[].prestigeLevel`, so `mapPlayer` now maps it and the row shows it only when it is above zero — a brawler without prestige reads as none, never as an invented level. Verified against the live payload after deploying the Worker (`d1086c27`): one member's 106 brawlers all carry it (Wendy power 11, rank 7, prestige 3, 3,001 trophies), and the worker test's fixture asserts both the published value and the absent one.
 
+**Brawler rank was dropped on request** (23 Sep 2026, immediately after): the owner does not want it on the row at all, so the display, `member.brawlerRank` and its clause in the legend are gone — the row now reads "Power level 11 · Hypercharge · Prestige 3". The `rank` field stays in `mapPlayer`'s output because that shape mirrors the official brawler payload rather than projecting it onto a screen, exactly like the equally-unrendered `highestTrophies`; removing it would be a change to the API contract for no reader's benefit.
+
+## Every deep link was broken after a deploy, and the reload made it worse (23 Sep 2026)
+
+Found while verifying the row above, on the live site: a member page showed "Coś się nie udało — Failed to fetch dynamically imported module: …/assets/m._tag-DgRRUNVF.js", and the app's own Reload button returned the same screen. Measured, not guessed:
+
+- The host served `index-DxhmYBLt.js`; the stuck tab kept booting `index-DzG_LOEH.js` and asking for `m._tag-DgRRUNVF.js`, which answers **404** on both hosts.
+- A route the static host does not prerender (`/m/<tag>/`, everything except the seven prerendered documents) is answered with the host's **404 document**. `public/sw.js` treated any non-ok response as a failed fetch, so instead of that document — which *is* the app, and the build the host serves right now — it fell back to `cache.match(shellUrl())`, the shell it cached under `/` at install time. After a deploy that shell is an older build, and the reload that would fix it is answered from the same place: the app is stuck until someone clears the cache by hand. That is the "I didn't have the app refreshed" the owner hit three times today.
+
+The fix, in two places:
+
+- `public/sw.js`: a 404 document is used and cached like any other document, because on a static host it *is* the SPA fallback. The navigation fetch also passes `cache: "no-store"`, because GitHub Pages lets a document sit in the browser's HTTP cache for ten minutes (`max-age=600`, measured) — a stale shell by another name. The shell cache is bumped to `n3x-shell-v5`, so a client that is already stuck drops the old document the moment the new worker activates.
+- `src/lib/recovery.ts`: `reloadOnce` drops the document caches before reloading, so a reload cannot be answered from the shell that caused the problem. It is async now and both callers (the router's error component, the version guard) await it. `recovery.test.ts` covers the two decisions — what counts as a stale-chunk error in each browser's wording, and that only `n3x-shell*` caches are dropped while the CDN cache is left alone.
+
+Verified on the stuck tab itself (the one showing the error screen): after the new worker activated, the same deep link booted the current build (`index-CWLbSUFa.js`) with no error screen, and the new cache holds the current document under `/`. Both hosts serve the fixed build; Cloudflare Pages needed its own redeploy, and one earlier Cloudflare deploy in this session went out with the `/n3x/` base by mistake — caught by reading the served document (`/n3x/assets/…` on a root host) and redeployed.
+
 ## History
 
 ### Original handoff (22 Sep 2026): the published site did not load club or meta

@@ -132,7 +132,6 @@ export function MemberScreen({ tag }: { tag: string }) {
                     </p>
                     <p className="text-xs text-subtle">
                       {t("member.powerLevel", { level: b.power })}
-                      {b.rank ? ` · ${t("member.brawlerRank", { rank: b.rank })}` : ""}
                       {b.hyper ? ` · ${t("member.hypercharge")}` : ""}
                       {b.prestige > 0 ? ` · ${t("member.prestige", { level: b.prestige })}` : ""}
                     </p>

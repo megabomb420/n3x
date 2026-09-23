@@ -7,7 +7,7 @@
  * the same-origin URL as a normal GET, follow the redirect, and return a fresh
  * Response so iOS does not leave standalone mode on a redirected response.
  */
-const SHELL = "n3x-shell-v4";
+const SHELL = "n3x-shell-v5";
 
 function shellUrl() {
   return new URL(self.registration.scope).href;
@@ -71,6 +71,10 @@ self.addEventListener("fetch", (event) => {
             headers: req.headers,
             credentials: req.credentials,
             redirect: "follow",
+            // The document must be the one the host serves *now*: GitHub Pages
+            // lets a document sit in the browser's HTTP cache for ten minutes,
+            // which is a stale shell by another name.
+            cache: "no-store",
           }),
         );
         // A static host answers a deep link it does not prerender — a member
