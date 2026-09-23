@@ -3,6 +3,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { ChartColumn, Map, RotateCw, Settings, Swords, Users, Youtube } from "lucide-react";
 import { useCallback, useEffect, useRef, type ReactNode } from "react";
 import { useT, type StringKey } from "@/lib/i18n/provider";
+import { cacheClear } from "@/lib/meta/cache";
 import { usePullToRefresh } from "@/hooks/use-pull-to-refresh";
 import { cn } from "@/lib/utils";
 import { ClubLogo } from "./club-logo";
@@ -36,7 +37,10 @@ export function AppShell({
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const mainRef = useRef<HTMLElement>(null);
   const queryClient = useQueryClient();
-  const refresh = useCallback(() => queryClient.invalidateQueries(), [queryClient]);
+  const refresh = useCallback(async () => {
+    cacheClear();
+    await queryClient.invalidateQueries();
+  }, [queryClient]);
   const { pull, refreshing, threshold } = usePullToRefresh(mainRef, refresh);
   /** The refreshing hold keeps the column open while the queries settle. */
   const offset = refreshing ? 44 : pull;

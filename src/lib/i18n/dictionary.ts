@@ -90,6 +90,15 @@ export const STRINGS = {
     "stats.picks": "Picks",
     "stats.winRateSort": "Win rate",
     "stats.smallSample": "small sample",
+    "stats.legend.title": "What do these numbers mean?",
+    "stats.legend.picks":
+      "Picks — how many of the analysed battles were played with that brawler. Only competitive queues, only the battles the log still holds.",
+    "stats.legend.winRate":
+      "Win rate — the share of those battles won. The bar measures from 50%, so a 55% row is a nudge to the right of even, not a 55%-long stretch of colour.",
+    "stats.legend.smallSample":
+      "Below {low} picks a row is a small sample: it is shown, but it is not a ranking.",
+    "stats.legend.more":
+      "Trophy and Elo balances, the range, and what the log cannot see are explained in the note at the bottom.",
     "stats.modes": "Modes",
     "stats.maps": "Maps",
     "stats.empty.title": "No competitive battles in this range",
@@ -255,15 +264,24 @@ export const STRINGS = {
     "stats.player": "Gracz",
     "stats.wholeClub": "Cały klub",
     "stats.battles": "Przeanalizowane bitwy",
-    "stats.winRate": "Skuteczność",
+    "stats.winRate": "Win rate",
     "stats.wins": "Wygrane",
     "stats.members": "Członkowie",
     "stats.role": "Rola",
     "stats.window": "Okres",
     "stats.brawlers": "Zadymiarze",
-    "stats.picks": "Wybory",
-    "stats.winRateSort": "Skuteczność",
+    "stats.picks": "Picks",
+    "stats.winRateSort": "Win rate",
     "stats.smallSample": "mała próba",
+    "stats.legend.title": "Co znaczą te liczby?",
+    "stats.legend.picks":
+      "Picks — ile z przeanalizowanych bitew zagrano tym zadymiarzem. Tylko kolejki rankingowe i tylko te bitwy, które dziennik jeszcze trzyma.",
+    "stats.legend.winRate":
+      "Win rate — jaka część z tych bitew została wygrana. Pasek mierzy od 50%, więc wiersz z 55% to wychylenie na prawo od remisu, a nie 55% długości koloru.",
+    "stats.legend.smallSample":
+      "Poniżej {low} wyborów wiersz to mała próba: jest pokazany, ale nie jest rankingiem.",
+    "stats.legend.more":
+      "Bilans pucharów i Elo, zakres oraz to, czego dziennik nie widzi, opisuje nota na dole.",
     "stats.modes": "Tryby",
     "stats.maps": "Mapy",
     "stats.empty.title": "Brak bitew rankingowych w tym zakresie",

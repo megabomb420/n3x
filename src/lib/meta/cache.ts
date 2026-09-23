@@ -43,6 +43,21 @@ export function cacheSet<T>(key: string, value: T): void {
   }
 }
 
+/** Drop every cached payload, so the next read goes to the network. Used by
+ *  pull-to-refresh: the per-loader TTLs (45 s club, 12 h catalog) would
+ *  otherwise answer a refresh from disk and nothing would change on screen. */
+export function cacheClear(): void {
+  const s = storage();
+  if (!s) return;
+  try {
+    for (const key of Object.keys(s)) {
+      if (key.startsWith(PREFIX)) s.removeItem(key);
+    }
+  } catch {
+    // quota / private mode — ignore
+  }
+}
+
 export function freshnessFromAge(ageMs: number | null, online: boolean): FreshnessKind {
   if (!online && ageMs != null) return ageMs > STALE_MS ? "stale" : "offline";
   if (ageMs == null) return "live";

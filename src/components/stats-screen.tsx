@@ -204,6 +204,16 @@ export function StatsScreen() {
         </p>
       </section>
 
+      <details className="rounded-xl bg-surface px-3 py-2 text-[11px] leading-relaxed text-muted [&::-webkit-details-marker]:hidden">
+        <summary className="cursor-pointer list-none text-subtle">{t("stats.legend.title")}</summary>
+        <div className="mt-2 space-y-1.5">
+          <p>{t("stats.legend.picks")}</p>
+          <p>{t("stats.legend.winRate")}</p>
+          <p>{t("stats.legend.smallSample", { low: LOW_SAMPLE })}</p>
+          <p className="text-subtle">{t("stats.legend.more")}</p>
+        </div>
+      </details>
+
       {meta.battles === 0 ? (
         <EmptyState
           title={t("stats.empty.title")}
@@ -292,6 +302,25 @@ function Segmented<T extends string>({
   );
 }
 
+/**
+ * Win rate as a bar measured from 50%, so a 55% row reads as a nudge past even
+ * instead of 55% of the track being filled. Shared by the brawler list and the
+ * mode/map breakdowns so one number looks the same everywhere.
+ */
+function RateBar({ rate, className }: { rate: number; className?: string }) {
+  const above = rate >= 0.5;
+  const width = Math.max(2, Math.round(Math.abs(rate - 0.5) * 100));
+  return (
+    <div className={cn("relative h-1.5 overflow-hidden rounded-full bg-surface-3", className)}>
+      <span aria-hidden className="absolute left-1/2 top-0 h-full w-px -translate-x-1/2 bg-border-strong" />
+      <span
+        className={cn("absolute top-0 h-full rounded-full", above ? "bg-win" : "bg-gold")}
+        style={above ? { left: "50%", width: `${width}%` } : { right: "50%", width: `${width}%` }}
+      />
+    </div>
+  );
+}
+
 function BrawlerRow({ row, catalog }: { row: MetaRow; catalog: Catalog | null }) {
   const t = useT();
   const small = row.picks < LOW_SAMPLE;
@@ -303,12 +332,7 @@ function BrawlerRow({ row, catalog }: { row: MetaRow; catalog: Catalog | null })
           <p className="truncate text-sm text-fg">{displayBrawlerName(row.name)}</p>
           {small ? <span className="shrink-0 text-[10px] text-low">{t("stats.smallSample")}</span> : null}
         </div>
-        <div className="mt-1 h-1.5 overflow-hidden rounded-full bg-surface-3">
-          <div
-            className={cn("h-full rounded-full", row.winRate >= 0.5 ? "bg-win" : "bg-gold")}
-            style={{ width: `${Math.round(row.winRate * 100)}%` }}
-          />
-        </div>
+        <RateBar rate={row.winRate} className="mt-1 w-20" />
       </div>
       <div className="w-16 shrink-0 text-right">
         <p className="text-sm text-fg">{pct(row.winRate)}</p>
@@ -346,14 +370,7 @@ function Breakdown({
         {shown.map((row) => (
           <li key={row.name} className="flex items-center gap-3 rounded-xl bg-surface px-3 py-2">
             <p className="min-w-0 flex-1 truncate text-sm text-fg">{label(row.name)}</p>
-            <div className="w-24 shrink-0">
-              <div className="h-1.5 overflow-hidden rounded-full bg-surface-3">
-                <div
-                  className={cn("h-full rounded-full", row.winRate >= 0.5 ? "bg-win" : "bg-gold")}
-                  style={{ width: `${Math.round(row.winRate * 100)}%` }}
-                />
-              </div>
-            </div>
+            <RateBar rate={row.winRate} className="w-20 shrink-0" />
             <p className="w-10 shrink-0 text-right text-xs text-muted">{pct(row.winRate)}</p>
             <p className="w-10 shrink-0 text-right text-[10px] text-subtle">{formatPicks(row.picks)}</p>
           </li>
