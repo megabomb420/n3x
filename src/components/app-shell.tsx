@@ -1,10 +1,11 @@
-import { Link, useRouterState } from "@tanstack/react-router";
+import { Link, useNavigate, useRouterState } from "@tanstack/react-router";
 import { useQueryClient } from "@tanstack/react-query";
 import { ChartColumn, Map, RotateCw, Settings, Swords, Users, Youtube } from "lucide-react";
 import { useCallback, useEffect, useRef, type ReactNode } from "react";
 import { useT, type StringKey } from "@/lib/i18n/provider";
 import { cacheClear } from "@/lib/meta/cache";
 import { usePullToRefresh } from "@/hooks/use-pull-to-refresh";
+import { useTabSwipe } from "@/hooks/use-tab-swipe";
 import { cn } from "@/lib/utils";
 import { ClubLogo } from "./club-logo";
 
@@ -15,7 +16,12 @@ import { ClubLogo } from "./club-logo";
  * Ladder, Maps and the device's own settings. The old Meta tab needed Brawl
  * Time Ninja's Cube aggregates, which no hosted build can reach; see HANDOFF.md.
  */
-const TABS: Array<{ to: string; icon: typeof Users; label: StringKey; active: (path: string) => boolean }> = [
+const TABS: Array<{
+  to: "/" | "/stats" | "/meta" | "/ladder" | "/maps" | "/settings";
+  icon: typeof Users;
+  label: StringKey;
+  active: (path: string) => boolean;
+}> = [
   { to: "/", icon: Users, label: "nav.club", active: (path) => path === "/" || path.startsWith("/m/") },
   { to: "/stats", icon: ChartColumn, label: "nav.stats", active: (path) => path.startsWith("/stats") },
   { to: "/meta", icon: Youtube, label: "nav.meta", active: (path) => path.startsWith("/meta") },
@@ -45,6 +51,24 @@ export function AppShell({
   /** The refreshing hold keeps the column open while the queries settle. */
   const offset = refreshing ? 44 : pull;
   const dragging = pull > 0 && !refreshing;
+
+  const navigate = useNavigate();
+  const tabIndex = TABS.findIndex((tab) => tab.active(pathname));
+  const step = useCallback(
+    (delta: number) => {
+      const nextTab = TABS[tabIndex + delta];
+      // `replace` on purpose: the tabs are the navigation, and an installed app
+      // has no browser back button. Keeping them out of the history is also what
+      // stops iOS's edge swipe from navigating away.
+      if (nextTab) void navigate({ to: nextTab.to, replace: true });
+    },
+    [navigate, tabIndex],
+  );
+  const { dx, target } = useTabSwipe(mainRef, {
+    next: () => step(1),
+    previous: () => step(-1),
+  });
+  const targetTab = target ? TABS[tabIndex + (target === "next" ? 1 : -1)] : null;
 
   useEffect(() => {
     if (import.meta.env.PROD && "serviceWorker" in navigator) {
@@ -111,11 +135,19 @@ export function AppShell({
     };
   }, []);
 
+  useEffect(() => {
+    // iOS ignores the manifest's `orientation` and refuses `lock()` outside
+    // fullscreen, so this only lands on platforms that support it. A rejection
+    // is the normal case, not an error.
+    const orientation = window.screen?.orientation as (ScreenOrientation & { lock?: (o: string) => Promise<void> }) | undefined;
+    void orientation?.lock?.("portrait")?.catch(() => undefined);
+  }, []);
+
   return (
     <div className="mx-auto flex h-full max-w-lg flex-col overflow-hidden bg-bg text-fg">
       <header className="shrink-0 border-b border-border bg-bg safe-top">
         <div className="flex items-center gap-3 px-3 pb-2.5 pt-1">
-          <Link to="/" aria-label="'N3X club home" className="shrink-0">
+          <Link to="/" replace aria-label="'N3X club home" className="shrink-0">
             <ClubLogo size={40} />
           </Link>
           <div className="min-w-0 flex-1">
@@ -157,12 +189,22 @@ export function AppShell({
           ref={mainRef}
           className="h-full overflow-y-auto overscroll-contain pb-3"
           style={{
-            transform: offset ? `translateY(${offset}px)` : undefined,
-            transition: dragging ? "none" : "transform 200ms ease-out",
+            transform: dx || offset ? `translate(${dx}px, ${offset}px)` : undefined,
+            transition: dragging || dx ? "none" : "transform 200ms ease-out",
           }}
         >
           {children}
         </main>
+
+        <div
+          aria-hidden
+          className="pointer-events-none absolute inset-x-0 bottom-2 flex justify-center transition-opacity duration-150"
+          style={{ opacity: targetTab ? 1 : 0 }}
+        >
+          <span className="rounded-full bg-surface px-3 py-1 font-display text-sm tracking-wide text-fg shadow-[var(--shadow-border)]">
+            {targetTab ? t(targetTab.label) : ""}
+          </span>
+        </div>
       </div>
 
       <nav className="shrink-0 border-t border-border bg-bg safe-bottom" aria-label="Primary">
@@ -174,6 +216,7 @@ export function AppShell({
               <Link
                 key={tab.to}
                 to={tab.to}
+                replace
                 className={cn(
                   "flex h-12 flex-col items-center justify-center gap-0.5 text-[10px] font-medium",
                   active ? "text-fg" : "text-subtle",

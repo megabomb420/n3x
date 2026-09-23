@@ -10,7 +10,7 @@ function AboutPage() {
   return (
     <AppShell title={t("about.title")}>
       <article className="space-y-5 px-4 pb-8 text-sm leading-relaxed text-muted">
-        <Link to="/" className="inline-flex min-h-11 items-center gap-1 text-fg">
+        <Link to="/" replace className="inline-flex min-h-11 items-center gap-1 text-fg">
           <ChevronLeft className="size-4" /> {t("common.back")}
         </Link>
         <p className="text-[11px] text-subtle">{t("about.note")}</p>

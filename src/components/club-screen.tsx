@@ -139,7 +139,7 @@ function MemberRow({ member, rank }: { member: ClubMember; rank: number }) {
   return (
     <li>
       <Link
-        to="/m/$tag"
+        to="/m/$tag" replace
         params={{ tag: member.tag }}
         className="flex min-h-14 items-center gap-3 rounded-xl bg-surface px-3 py-2 transition-transform duration-150 ease-out active:scale-[0.98]"
       >
@@ -210,7 +210,7 @@ function ActivityBlock({
                 <p className="text-xs text-subtle">{formatRelative(ev.occurredAt)}</p>
               </div>
               {ev.kind !== "leave" ? (
-                <Link to="/m/$tag" params={{ tag: ev.playerTag }} className="shrink-0 text-xs text-muted">
+                <Link to="/m/$tag" replace params={{ tag: ev.playerTag }} className="shrink-0 text-xs text-muted">
                   {t("club.statsLink")}
                 </Link>
               ) : null}

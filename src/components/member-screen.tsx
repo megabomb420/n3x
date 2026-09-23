@@ -48,7 +48,7 @@ export function MemberScreen({ tag }: { tag: string }) {
 
   return (
     <div className="flex flex-col gap-3 px-3">
-      <Link to="/" className="inline-flex min-h-11 items-center gap-1 text-sm text-muted">
+      <Link to="/" replace className="inline-flex min-h-11 items-center gap-1 text-sm text-muted">
         <ChevronLeft className="size-4" /> {t("member.roster")}
       </Link>
 
