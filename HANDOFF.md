@@ -66,6 +66,20 @@ Asked to make a map open its **picture**, and to put **global** numbers on the m
 
 **Still open.** A trophy-range figure for a map needs a source that publishes one (Brawl Time Ninja, owner-hosted). The picture overlay sizes from one number (`max-h-[58vh]`); a device that wants it smaller changes that only.
 
+## Club tab reads what it shows, and a map leads with its own ranking (23 Sep 2026)
+
+Three complaints from the owner, all of them about a screen making the reader wait or look in the wrong place.
+
+**The Elo arrived only when you scrolled to it.** `RankedBoard` gated its query behind an `IntersectionObserver`, so the 28 profile requests started when the board came into view and the reader watched the table fill in. The observer is gone: the query runs with the tab, and the header carries `club.rankedReading` ("reading Elo… 6/28") while it does, because 28 profiles take a while. Rows still hold the roster's order until the run lands and only then become a ranking — reordering under the reader as each profile arrives is worse than the wait. Measured in a browser: the count appears with the first paint, 0/28 → 6/28 in about seven seconds, then the header becomes `club.rankedHint` and the rows are ordered by Elo (KUBA|K.O 5,059 first).
+
+**The club's battles lived only under Stats.** The club tab now shows **Latest club battles**: `recentBattles(logs, 25)` — a new pure function next to `battlesOnMap` in `src/lib/club/stats.ts` (+ a test in `stats.test.ts`), newest first, competitive only, an unparseable timestamp last rather than first. It keeps Showdown games and says so: the official API publishes no win or loss for them, so the row reads "Battle" where a ladder game reads victory/defeat. Rows come from the shared `src/components/battle-row.tsx`, which the map screen uses too, so both lists read the same. The tab order is now summary → Ranked → battles → roster (with its search) → join/leave log.
+
+**The map's best brawlers were shown wrong.** They were grouped by the publisher's **overall** tier list, which is not map-specific: Rosa, the number one brawler on Beach Ball at 75%, sat about fifteen rows down inside group "A". The table is now in the publisher's own order — that map's ranking — with the tier as a badge next to each name, and `map.tierNote` says exactly that. The page also carries the publisher's four lists for the map (`Best picks`, `Winners`, `Most used`, `Not recommended`, translated) above the table. A rotation card is a **link straight to the map's page** again; the full-screen picture view moved one tap deeper, onto that page's picture, with `map.pictureHint` naming it.
+
+Verified: `npm run typecheck` clean; `npm test` 208 script + **77** TypeScript tests, zero failures (the new `recentBattles` test included); `npm run build:pages` prerenders 16 pages; eslint clean on every touched file. In a browser at 390x844: the club tab shows "reading Elo… 0/28" on the first screen and 25 feed rows naming our members with mode, map, brawler and trophy delta; a rotation card lands on `/maps/Pinball Dreams/` with no dialog, and the page heads its table `Ash 74% / Lola 73% / Trunk 72% / Janet 71%` (the publisher's order) with Best picks / Winners / Most used / Not recommended above it; tapping the picture opens the full-screen view (displayed ratio 0.657). Polish renders "pobieram Elo… n/28", "Ostatnie bitwy klubu", "Zadymiarze na tej mapie", "Najlepsze wybory" / "Zwycięzcy" / "Najczęściej grani" / "Odradzani" and the reworded tier note.
+
+**Load profile, measured:** opening the club tab now asks for the roster, 28 profiles and 28 battle logs (batches of six, the same loaders Stats and a map's page already use, cached 5-10 minutes). That is the same order of magnitude as opening Stats once, and the Worker's per-IP limit is 90 requests a minute.
+
 ## History
 
 ### Original handoff (22 Sep 2026): the published site did not load club or meta
@@ -176,10 +190,10 @@ Unofficial companion for Brawl Stars club **'N3X**, tag `#2JYGUQ2P8`. Not affili
 
 | Tab | Route | Job |
 |---|---|---|
-| Club | `/` | Live roster and join/leave log, then the **Ranked board**: every member's tier and Elo, read from their own profile (lazily, six at a time, when the board is scrolled into view) and sorted by Elo. Tap a member (`/m/$tag`) for trophies, Ranked ELO, top brawlers, recent battles. |
+| Club | `/` | The **Ranked board** (every member's tier and Elo from their own profile, six at a time, and it starts with the tab — its header counts the profiles in as they land) and **Latest club battles** (the newest 25 competitive battles across the members' logs), then the roster with its search, then the join/leave log. Tap a member (`/m/$tag`) for trophies, Ranked ELO, top brawlers, recent battles. |
 | Stats | `/stats` | What the club plays: brawlers, modes and maps from the members' own battle logs, with queue (All/Ladder/Ranked) and range filters. No Elo here on purpose — Ranked standings are the club tab's board, and the API publishes no per-battle Elo delta. |
 | Meta | `/meta` | Ladder vs Ranked, kept separate. Ranked filters are league floors (Gold+ … Masters+), **not** brawler trophies. |
-| Maps | `/maps`, `/maps/$map` | The live event rotation; a card opens the map's **picture** (whole, 690x1050) with the publisher's best picks, its sample size and its date, and links on to that map's own page: the publisher's global table grouped by overall tier, then our club's own battles there. No club rate and no queue tabs. |
+| Maps | `/maps`, `/maps/$map` | The live event rotation; a card goes straight to that map's own page: its picture whole (690x1050, tap for full screen), the publisher's sample size and date, its four lists (best picks, winners, most used, not recommended) and its table **in the publisher's own order** — that map's ranking — with the overall tier as a badge per row, then our club's own battles there. No club rate and no queue tabs. |
 
 Auth is off. Database is on, rows unowned (no `user_id`). Schema: `migrations/0002_club_activity.sql` (`club_snapshot`, `club_events`). First visit stores a baseline roster. Later diffs become join/leave/role events. Do not import `authMiddleware`.
 
