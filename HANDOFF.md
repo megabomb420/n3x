@@ -136,6 +136,23 @@ Stack: TanStack Start, React 19, Tailwind v4, Vite, Nitro preset `vercel`. App s
 
 **Measured on an iPhone 17 Pro, iOS 26, installed app** (`?diag=1`, one tap from the header pill → About): `inner` `vv` `doc` all **812**, screen **874**, `100lvh` **874**, `svh` `dvh` **812**, `env(safe-area-inset-top)` **62px**, `bottom` **34px**, `standalone true`. So the layout viewport — and every vh unit except `lvh` — is the screen *minus the top inset*, anchored at the top of the screen. A `position: fixed` bar placed at the bottom of `100lvh` is never displayed, so **nothing can be laid out below 812**; the page background still paints down to 874 because that is the canvas, not the layout. Two consequences are baked into the shell: the header deliberately paints under the status bar (`.safe-top` = inset + 1.6 rem keeps its bright mark out of the blur band iOS lays over the top of the screen), and the home-indicator inset lies *below* the paintable area, so reserving it only pushed the tabs ~38 px up into the black — `AppShell` sets `--inset-bottom: 0` when `100lvh` is taller than the visible viewport, and `.safe-bottom` reads that variable. A taller `--app-h` is only ever applied when the *visible* viewport really is taller than the layout viewport, which keeps Safari's collapsing toolbars out of it.
 
+### OPEN: the dead band under the nav (iOS 26 standalone)
+
+**Not solved, and it is the one thing on this app that is not.** Everything here was measured on the user's own iPhone 17 Pro, iOS 26, installed app, through `?diag=1`.
+
+What the page is given: `inner` = `vv` = `doc` = **812**, screen **874**, `100lvh` **874**, `svh`/`dvh` **812**, `env(safe-area-inset-top)` **62px**, `bottom` **34px**, `standalone true`. The layout viewport is the screen *minus the status bar*, anchored at the **top** of the screen: the probe's `fixed inset-0` outline draws at screen y 0→812, and the header paints under the clock (iOS lays its blur band over it). The last 62 px of the screen have no layout at all.
+
+**Nothing can paint there.** A `position: fixed` bar placed at the bottom of `100lvh`, and a `100lvh`-tall fixed box, are both invisible on that device — only the page *background* shows, because the canvas covers the whole screen while layout does not. So neither `100dvh` nor `100lvh` is a height to lay out against.
+
+**What was tried, and what each attempt actually changed.**
+
+- `100svh` → `height: 100%` (d978f9a): no visible change; the layout viewport is short either way.
+- Growing the column to `window.innerHeight` when it exceeds the layout viewport (fbe97fa): never fires — on this device `inner` *is* the short 812, so there is nothing taller to grow to.
+- `--inset-bottom: 0` while the layout viewport is short and `env(safe-area-inset-top)` is real (a995f84): the one real gain. The home-indicator inset then lies *below* the paintable area, so reserving it only pushed the tabs up; dropping it moved them ~38 px down, and the tab rows are 48 px.
+- `black-translucent` → `black` plus `color-scheme: dark` (834b08d): meant to make iOS place the web view *below* the status bar so it reaches the bottom edge. The band has not been re-measured on the device since — that screenshot is the next thing to look at.
+
+**What is still worth trying.** `apple-mobile-web-app-status-bar-style: default`, then no status-bar meta at all; if neither moves it, accept that the band is the system's and stop burning attempts on it. One screenshot from the installed app after a full relaunch (swipe the app away, reopen, then `?diag=1`) settles it: `env top 0px` means the view sits below the status bar and the band should be gone; `env top 62px` means iOS kept the anchored-at-top sizing and the space is unreachable. The probe is in the app for exactly this — do not remove it without leaving a replacement way to read those four numbers.
+
 ### What was broken then (Grok era — resolved by the rewrite)
 
 On https://n3x.grok.me/ the shell renders and then:

@@ -157,7 +157,7 @@ export function MemberScreen({ tag }: { tag: string }) {
                   {b.map ? ` · ${b.map}` : ""}
                   {b.brawler ? ` · ${displayBrawlerName(b.brawler)}` : ""}
                   {b.trophyChange != null
-                    ? ` · ${b.trophyChange > 0 ? "+" : ""}${b.trophyChange}`
+                    ? ` · ${b.trophyChange > 0 ? "+" : ""}${b.trophyChange}${b.ranked ? " ELO" : ""}`
                     : ""}
                 </p>
               </li>

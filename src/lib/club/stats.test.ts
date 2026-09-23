@@ -48,7 +48,10 @@ test("club meta counts only competitive battles and splits the queues", () => {
   const nita = all.brawlers.find((row) => row.name === "NITA");
   assert.equal(nita?.picks, 3);
   assert.equal(nita?.wins, 1);
-  assert.equal(nita?.trophyChange, -38, "net trophies and Elo are summed, not averaged");
+  assert.equal(nita?.trophyChange, 2, "only ladder battles carry trophies: 8 and -6");
+  assert.equal(nita?.eloChange, -40, "the Ranked battle carries Elo, never added to trophies");
+  assert.equal(nita?.trophyKnown, 2);
+  assert.equal(nita?.eloKnown, 1);
   assert.equal(Math.round((nita?.winRate ?? 0) * 100), 33);
 
   const ladder = aggregateBattles(logs, "ladder");
@@ -63,7 +66,9 @@ test("club meta counts only competitive battles and splits the queues", () => {
     wins: 1,
     winRate: 0.5,
     trophyChange: 2,
-    changeKnown: 2,
+    eloChange: 0,
+    trophyKnown: 2,
+    eloKnown: 0,
   });
   assert.equal(ladder.maps[0]?.name, "Triple Dribble");
 
@@ -74,7 +79,8 @@ test("club meta counts only competitive battles and splits the queues", () => {
     ["SHELLY", "NITA"],
     "equal picks are ordered by win rate",
   );
-  assert.equal(ranked.brawlers[0]?.trophyChange, 80, "Ranked battles carry Elo, not trophies");
+  assert.equal(ranked.brawlers[0]?.eloChange, 80, "Ranked battles carry Elo, not trophies");
+  assert.equal(ranked.brawlers[0]?.trophyChange, 0, "no ladder battle, no trophies");
 });
 
 test("a small sample is visible as a small sample, and an unpublished change is not a zero", () => {
@@ -94,8 +100,9 @@ test("a small sample is visible as a small sample, and an unpublished change is 
   const row = meta.brawlers[0];
   assert.equal(row?.picks, 2);
   assert.ok((row?.picks ?? 0) < LOW_SAMPLE);
-  assert.equal(row?.changeKnown, 1, "only one of the two battles published a change");
+  assert.equal(row?.trophyKnown, 1, "only one of the two battles published a trophy change");
   assert.equal(row?.trophyChange, 8, "the unpublished one is not silently counted as zero");
+  assert.equal(row?.eloKnown, 0, "the Ranked battle published no Elo");
 });
 
 test("a member filter and a time range drop everyone and everything else", () => {

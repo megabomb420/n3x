@@ -87,9 +87,9 @@ export const STRINGS = {
     "stats.trophies": "Trophies",
     "stats.battlesShort": "battles",
     "stats.members.note":
-      "Sorted by what they gained in this window — trophies in the Ladder queue, Elo in Ranked.",
+      "Sorted by what they gained in this window — trophies from ladder battles. In the Ranked queue the list sorts by current Elo instead, because Ranked battles publish no delta.",
     "stats.legend.members":
-      "Members — the left number is their trophies now with the window's gain under it; the right one is their Ranked Elo and tier, read from their own profile (a dash means the profile did not answer).",
+      "Members — the left number is their trophies now, with the window's gain under it (trophies from ladder battles; Ranked publishes no delta, so that line is hidden there). The right one is their current Ranked Elo and tier, read from their own profile (a dash means the profile did not answer).",
     "stats.role": "Role",
     "stats.window": "Window",
     "stats.brawlers": "Brawlers",
@@ -113,7 +113,7 @@ export const STRINGS = {
     "stats.empty.member":
       "{name} has nothing on this queue inside {range}. The official log only keeps recent games, so a wide range can still be empty.",
     "stats.note":
-      "Counting competitive battles only — friendlies and event modes stay out. The official log keeps about the last 25 games per player, so 30 days often matches All logs. A row with fewer than {low} picks is a small sample, not a ranking. The right-hand number is net trophies on the ladder and net Elo in Ranked — a dash means the API published none for those battles.",
+      "Counting competitive battles only — friendlies and event modes stay out. The official log keeps about the last 25 games per player, so 30 days often matches All logs. A row with fewer than {low} picks is a small sample, not a ranking. The right-hand number is net trophies from ladder battles — Ranked battles publish no trophy and no Elo delta, so that column is empty there. Current Ranked Elo and tier come from the player's own profile (Members view).",
 
     "meta.scope.overall": "Overall",
     "meta.scope.ranked": "Ranked",
@@ -276,9 +276,9 @@ export const STRINGS = {
     "stats.trophies": "Puchary",
     "stats.battlesShort": "bitew",
     "stats.members.note":
-      "Sortowani po tym, ile wbili w tym zakresie — puchary w kolejce pucharowej, Elo w rankingowej.",
+      "Sortowani po tym, ile wbili w tym zakresie — puchary z bitew pucharowych. W kolejce rankingowej lista sortuje się po aktualnym Elo, bo bitwy rankingowe nie publikują zmiany.",
     "stats.legend.members":
-      "Członkowie — liczba po lewej to puchary teraz, a pod nią bilans z zakresu; po prawej Elo w Ranked i tier z własnego profilu (myślnik oznacza, że profil nie odpowiedział).",
+      "Członkowie — liczba po lewej to puchary teraz, a pod nią bilans z zakresu (puchary z bitew pucharowych; rankingowe nie publikują zmiany, więc ta linia jest tam ukryta). Po prawej aktualne Elo w Ranked i tier z własnego profilu (myślnik oznacza, że profil nie odpowiedział).",
     "stats.role": "Rola",
     "stats.window": "Okres",
     "stats.brawlers": "Zadymiarze",
@@ -302,7 +302,7 @@ export const STRINGS = {
     "stats.empty.member":
       "{name} nie ma nic w tej kolejce w zakresie: {range}. Oficjalny dziennik trzyma tylko ostatnie gry, więc szeroki zakres nadal może być pusty.",
     "stats.note":
-      "Liczymy tylko bitwy rankingowe — towarzyskie i tryby wydarzeń zostają poza. Oficjalny dziennik trzyma około 25 ostatnich gier na gracza, więc 30 dni często równa się całym dziennikom. Wiersz z mniej niż {low} wyborami to mała próba, nie ranking. Liczba po prawej to bilans pucharów w trybie pucharowym i bilans Elo w rankingowym — myślnik oznacza, że API ich nie podało.",
+      "Liczymy tylko bitwy rankingowe — towarzyskie i tryby wydarzeń zostają poza. Oficjalny dziennik trzyma około 25 ostatnich gier na gracza, więc 30 dni często równa się całym dziennikom. Wiersz z mniej niż {low} wyborami to mała próba, nie ranking. Liczba po prawej to bilans pucharów z bitew pucharowych — bitwy rankingowe nie publikują ani pucharów, ani delty Elo, więc w tej kolejce kolumna jest pusta. Aktualne Elo w Ranked i tier pochodzą z profilu gracza (widok Członkowie).",
 
     "meta.scope.overall": "Ogólna",
     "meta.scope.ranked": "Rankingowa",

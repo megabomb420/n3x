@@ -39,6 +39,11 @@ const QUEUE_KEY = "n3x.stats.queue";
 
 const pct = (value: number) => `${Math.round(value * 100)}%`;
 
+/** Ranked battles publish no Elo delta, so the change column is ladder-only. */
+function changeOf(row: MetaRow) {
+  return { value: row.trophyChange, known: row.trophyKnown };
+}
+
 function signed(value: number): string {
   return `${value > 0 ? "+" : ""}${value.toLocaleString("en-GB")}`;
 }
@@ -277,7 +282,7 @@ export function StatsScreen() {
                   sort === "picks" ? b.picks - a.picks || b.winRate - a.winRate : b.winRate - a.winRate || b.picks - a.picks,
                 )
                 .map((row) => (
-                  <BrawlerRow key={row.name} row={row} catalog={catalog} />
+                  <BrawlerRow key={row.name} row={row} queue={queue} catalog={catalog} />
                 ))}
             </ul>
           </section>
@@ -309,22 +314,27 @@ function MemberList({
   const t = useT();
   const roleLabel = useRoleLabel();
   const since = rangeStart(range, Date.now());
+  const elo = queue === "ranked";
 
-  const rows = useMemo(
-    () =>
-      bundle.members
-        .map((member) => {
-          const stats = aggregateBattles(bundle.logs, queue, { tag: member.tag, sinceMs: since });
-          return {
-            member,
-            battles: stats.battles,
-            winRate: stats.winRate,
-            change: stats.brawlers.reduce((sum, row) => sum + row.trophyChange, 0),
-          };
-        })
-        .sort((a, b) => b.change - a.change || b.battles - a.battles || a.member.name.localeCompare(b.member.name)),
-    [bundle, queue, since],
-  );
+  const rows = useMemo(() => {
+    const scored = bundle.members.map((member) => {
+      const stats = aggregateBattles(bundle.logs, queue, { tag: member.tag, sinceMs: since });
+      return {
+        member,
+        battles: stats.battles,
+        winRate: stats.winRate,
+        change: stats.brawlers.reduce((sum, row) => sum + changeOf(row).value, 0),
+        changeKnown: stats.brawlers.reduce((sum, row) => sum + changeOf(row).known, 0),
+      };
+    });
+    // Ranked publishes no delta, so that queue sorts on the standing instead.
+    const eloOf = (tag: string) => ranked?.find((entry) => entry.tag === tag)?.elo ?? -1;
+    return elo
+      ? scored.sort((a, b) => eloOf(b.member.tag) - eloOf(a.member.tag) || b.battles - a.battles)
+      : scored.sort(
+          (a, b) => b.change - a.change || b.battles - a.battles || a.member.name.localeCompare(b.member.name),
+        );
+  }, [bundle, queue, since, elo, ranked]);
 
   return (
     <section>
@@ -339,7 +349,7 @@ function MemberList({
         <span className="w-16 shrink-0 text-right">ELO</span>
       </div>
       <ul className="flex flex-col gap-1.5">
-        {rows.map(({ member, battles, winRate, change }) => {
+        {rows.map(({ member, battles, winRate, change, changeKnown }) => {
           const standing = ranked?.find((entry) => entry.tag === member.tag) ?? null;
           return (
             <li key={member.tag} className="flex items-center gap-3 rounded-xl bg-surface px-3 py-2">
@@ -358,14 +368,16 @@ function MemberList({
               </div>
               <div className="w-20 shrink-0 text-right">
                 <p className="tabular text-sm text-fg">{formatTrophies(member.trophies)}</p>
-                <p
-                  className={cn(
-                    "tabular text-[10px]",
-                    battles === 0 ? "text-subtle" : change >= 0 ? "text-win" : "text-danger",
-                  )}
-                >
-                  {battles > 0 ? signed(change) : "—"}
-                </p>
+                {elo ? null : (
+                  <p
+                    className={cn(
+                      "tabular text-[10px]",
+                      changeKnown === 0 ? "text-subtle" : change >= 0 ? "text-win" : "text-danger",
+                    )}
+                  >
+                    {changeKnown === 0 ? "—" : signed(change)}
+                  </p>
+                )}
               </div>
               <div className="w-16 shrink-0 text-right">
                 <p className="tabular text-sm text-fg">
@@ -410,9 +422,10 @@ function RateBar({ rate, className }: { rate: number; className?: string }) {
   );
 }
 
-function BrawlerRow({ row, catalog }: { row: MetaRow; catalog: Catalog | null }) {
+function BrawlerRow({ row, queue, catalog }: { row: MetaRow; queue: MetaQueue; catalog: Catalog | null }) {
   const t = useT();
   const small = row.picks < LOW_SAMPLE;
+  const change = changeOf(row);
   return (
     <li className="flex items-center gap-2.5 rounded-xl bg-surface px-3 py-2">
       <Portrait catalog={findBrawler(catalog, row.name)} cubeName={row.name} size={32} decorative />
@@ -427,14 +440,16 @@ function BrawlerRow({ row, catalog }: { row: MetaRow; catalog: Catalog | null })
         <p className="text-sm text-fg">{pct(row.winRate)}</p>
         <p className="text-[10px] text-subtle">{formatPicks(row.picks)}</p>
       </div>
-      <p
-        className={cn(
-          "w-14 shrink-0 text-right text-xs",
-          row.changeKnown === 0 ? "text-subtle" : row.trophyChange >= 0 ? "text-win" : "text-danger",
-        )}
-      >
-        {row.changeKnown === 0 ? "—" : signed(row.trophyChange)}
-      </p>
+      {queue === "ranked" ? null : (
+        <p
+          className={cn(
+            "w-16 shrink-0 text-right text-xs",
+            change.known === 0 ? "text-subtle" : change.value >= 0 ? "text-win" : "text-danger",
+          )}
+        >
+          {change.known === 0 ? "—" : signed(change.value)}
+        </p>
+      )}
     </li>
   );
 }

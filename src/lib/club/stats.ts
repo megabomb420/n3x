@@ -32,10 +32,14 @@ export interface MetaRow {
   picks: number;
   wins: number;
   winRate: number;
-  /** Net trophies on the ladder, net Elo in Ranked. */
+  /** Net trophies over this group's ladder battles. Ranked battles never land here. */
   trophyChange: number;
-  /** How many of the picks actually carried a trophy/Elo change; 0 means "not published". */
-  changeKnown: number;
+  /** Net Elo over this group's Ranked battles — a different unit, kept apart. */
+  eloChange: number;
+  /** Ladder battles that published a trophy change; 0 means "not published". */
+  trophyKnown: number;
+  /** Ranked battles that published an Elo change. */
+  eloKnown: number;
 }
 
 export interface ClubMeta {
@@ -93,12 +97,19 @@ export function aggregateBattles(
     for (const { battle } of selected) {
       const name = key(battle);
       if (!name) continue;
-      const row = groups.get(name) ?? { name, picks: 0, wins: 0, winRate: 0, trophyChange: 0, changeKnown: 0 };
+      const row =
+        groups.get(name) ??
+        { name, picks: 0, wins: 0, winRate: 0, trophyChange: 0, eloChange: 0, trophyKnown: 0, eloKnown: 0 };
       row.picks += 1;
       if (battle.victory) row.wins += 1;
       if (typeof battle.trophyChange === "number") {
-        row.trophyChange += battle.trophyChange;
-        row.changeKnown += 1;
+        if (battle.ranked) {
+          row.eloChange += battle.trophyChange;
+          row.eloKnown += 1;
+        } else {
+          row.trophyChange += battle.trophyChange;
+          row.trophyKnown += 1;
+        }
       }
       groups.set(name, row);
     }
