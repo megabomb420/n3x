@@ -52,13 +52,13 @@ export function LayoutProbe() {
         return `${Math.round(r.top)}→${Math.round(r.bottom)}`;
       };
       const column = document.querySelector("nav")?.parentElement ?? null;
-      const screenHeight = Math.round(window.screen.height / window.devicePixelRatio);
+      const screenHeight = Math.round(window.screen.height);
       setScreenPx(screenHeight);
       setLines([
         `inner ${window.innerHeight} · vv ${Math.round(window.visualViewport?.height ?? 0)} · vvTop ${Math.round(window.visualViewport?.offsetTop ?? 0)}`,
         `doc ${root.clientHeight} · scroll ${root.scrollHeight} · screen ${screenHeight} · dpr ${window.devicePixelRatio}`,
         `lvh ${measure("height:100lvh")} · svh ${measure("height:100svh")} · dvh ${measure("height:100dvh")}`,
-        `env top ${env("top")} · bottom ${env("bottom")} · app-h ${root.style.getPropertyValue("--app-h") || "unset"}`,
+        `env top ${env("top")} · bottom ${env("bottom")} · app-h ${root.style.getPropertyValue("--app-h") || "unset"} · inset-b ${root.style.getPropertyValue("--inset-bottom") || "unset"}`,
         `standalone ${standalone}`,
         `column ${box(column)} · nav ${box(document.querySelector("nav"))}`,
       ]);

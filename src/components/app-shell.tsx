@@ -50,29 +50,44 @@ export function AppShell({
   }, [pathname]);
 
   /**
-   * iOS 26 standalone hands the document a layout viewport that is shorter than
-   * the screen (it subtracts the safe-area insets) while the web view still
-   * paints the whole screen — the header lands under the status bar, and the
-   * column stops ~96 pt early, leaving a dead band under the nav. `100svh` and
-   * `height: 100%` both resolve to that short viewport, so measure the visible
-   * one and grow only when it is genuinely taller. Browsers (Safari's toolbars)
-   * are left alone.
+   * iOS 26 standalone reports the layout viewport as the screen *minus* the
+   * top safe-area inset, anchored at the top of the screen; `100lvh` still says
+   * the full screen, but a probe at its bottom edge is never displayed (measured
+   * on an iPhone 17 Pro: `inner`/`doc` 812, `lvh` 874, `env top 62 · bottom 34`).
+   * So:
+   *
+   *  - grow the column whenever the visible viewport really is taller than the
+   *    layout viewport (Safari's toolbars are left alone);
+   *  - drop the home-indicator padding when the layout viewport is the shorter
+   *    one, because the inset then lies *below* the paintable area and reserving
+   *    it only pushes the tabs ~38 px up into the black.
    */
   useEffect(() => {
     const root = document.documentElement;
+    const ruler = document.createElement("div");
+    ruler.style.cssText = "position:absolute;left:-9999px;width:1px;height:100lvh";
     const sync = () => {
+      if (!ruler.isConnected) document.body.append(ruler);
       const standalone = matchMedia("(display-mode: standalone), (display-mode: fullscreen)").matches;
       const visible = Math.max(window.innerHeight, window.visualViewport?.height ?? 0);
+      const screen = ruler.getBoundingClientRect().height;
+
       if (standalone && visible > root.clientHeight + 1) {
         root.style.setProperty("--app-h", `${Math.round(visible)}px`);
       } else {
         root.style.removeProperty("--app-h");
+      }
+      if (standalone && screen > visible + 1) {
+        root.style.setProperty("--inset-bottom", "0px");
+      } else {
+        root.style.removeProperty("--inset-bottom");
       }
     };
     sync();
     window.addEventListener("resize", sync);
     window.visualViewport?.addEventListener("resize", sync);
     return () => {
+      ruler.remove();
       window.removeEventListener("resize", sync);
       window.visualViewport?.removeEventListener("resize", sync);
     };
@@ -111,7 +126,7 @@ export function AppShell({
                 key={tab.to}
                 to={tab.to}
                 className={cn(
-                  "flex h-11 flex-col items-center justify-center gap-0.5 text-[10px] font-medium",
+                  "flex h-12 flex-col items-center justify-center gap-0.5 text-[10px] font-medium",
                   active ? "text-fg" : "text-subtle",
                 )}
               >

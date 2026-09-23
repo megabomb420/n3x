@@ -125,10 +125,10 @@
 }
 @media (display-mode: standalone), (display-mode: fullscreen) {
   .safe-top {
-    padding-top: calc(env(safe-area-inset-top, 0px) + 1.1rem);
+    padding-top: calc(env(safe-area-inset-top, 0px) + 1.6rem);
   }
   .safe-bottom {
-    padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 0.25rem);
+    padding-bottom: calc(var(--inset-bottom, env(safe-area-inset-bottom, 0px)) + 0.25rem);
   }
 }
 
