@@ -3,12 +3,12 @@ import { Clock } from "lucide-react";
 import { useEffect, useState } from "react";
 import { apiGet } from "@/lib/api/client";
 import { defaultLadderCountry, ladderRegionName, LADDER_REGIONS } from "@/lib/ladder/regions";
+import { useI18n, useT } from "@/lib/i18n/provider";
 import { formatRelative, formatTrophies } from "@/lib/meta/format";
 import { readPref, writePref } from "@/lib/prefs";
 import { useOnline } from "@/hooks/use-online";
 import { cn } from "@/lib/utils";
 import { EmptyState, ErrorState, OfflineBanner, SkeletonRows } from "./state-views";
-
 type LadderType = "players" | "clubs";
 
 interface LadderRow {
@@ -27,9 +27,9 @@ interface LadderPayload {
   rows: LadderRow[];
 }
 
-const TYPES: Array<{ value: LadderType; label: string }> = [
-  { value: "players", label: "Players" },
-  { value: "clubs", label: "Clubs" },
+const TYPES: Array<{ value: LadderType; label: "ladder.type.players" | "ladder.type.clubs" }> = [
+  { value: "players", label: "ladder.type.players" },
+  { value: "clubs", label: "ladder.type.clubs" },
 ];
 
 const COUNTRY_KEY = "n3x.ladder.country";
@@ -37,6 +37,7 @@ const REGION_CODES = LADDER_REGIONS.map((region) => region.code);
 
 /** Official leaderboards from the `n3x-api` Worker (`GET /ladder?type=…&country=…`). */
 export function LadderScreen() {
+  const { lang, t } = useI18n();
   const online = useOnline();
   const [type, setType] = useState<LadderType>("players");
   // Null until the saved region is read, so a prerender does not flash Global
@@ -66,13 +67,13 @@ export function LadderScreen() {
   // API's, so the rows are never re-sorted here.
   const rows = query.data?.rows ?? [];
   const data = query.data;
-  const region = country ? ladderRegionName(country) : "Region";
+  const region = country ? ladderRegionName(country, lang) : t("ladder.region");
 
   return (
     <div className="flex flex-col gap-3 px-3">
       {!online ? <OfflineBanner stale={Boolean(data)} /> : null}
 
-      <div role="tablist" aria-label="Leaderboard" className="grid grid-cols-2 gap-0.5 rounded-lg bg-surface-2 p-0.5">
+      <div role="tablist" aria-label={t("nav.ladder")} className="grid grid-cols-2 gap-0.5 rounded-lg bg-surface-2 p-0.5">
         {TYPES.map((option) => {
           const active = option.value === type;
           return (
@@ -87,24 +88,24 @@ export function LadderScreen() {
                 active ? "bg-surface text-fg shadow-[var(--shadow-border)]" : "text-muted",
               )}
             >
-              {option.label}
+              {t(option.label)}
             </button>
           );
         })}
       </div>
 
       <label className="flex items-center gap-2 rounded-xl bg-surface px-3 py-2">
-        <span className="shrink-0 text-xs uppercase tracking-wider text-subtle">Region</span>
+        <span className="shrink-0 text-xs uppercase tracking-wider text-subtle">{t("ladder.region")}</span>
         {country ? (
           <select
             value={country}
             onChange={(event) => chooseCountry(event.target.value)}
             className="min-h-9 min-w-0 flex-1 bg-transparent text-right text-sm text-fg outline-none"
-            aria-label="Leaderboard region"
+            aria-label={t("ladder.region")}
           >
             {LADDER_REGIONS.map((regionOption) => (
               <option key={regionOption.code} value={regionOption.code}>
-                {regionOption.name}
+                {lang === "pl" ? regionOption.pl : regionOption.name}
               </option>
             ))}
           </select>
@@ -116,8 +117,8 @@ export function LadderScreen() {
       {country && query.isLoading ? <SkeletonRows count={10} /> : null}
       {query.isError && !data ? (
         <ErrorState
-          title="Leaderboard unavailable"
-          body={query.error instanceof Error ? query.error.message : "Could not load the leaderboard."}
+          title={t("state.ladder.title")}
+          body={query.error instanceof Error ? query.error.message : t("state.ladder.body")}
           onRetry={() => void query.refetch()}
         />
       ) : null}
@@ -125,15 +126,15 @@ export function LadderScreen() {
       {data ? (
         <>
           {rows.length === 0 ? (
-            <EmptyState title="No ranked rows" body="The leaderboard answered, but it has no rows in it right now." />
+            <EmptyState title={t("ladder.noRows")} body={t("ladder.noRowsBody")} />
           ) : (
             <section>
               <div className="mb-1.5 flex items-baseline justify-between gap-2">
                 <h2 className="font-display text-lg tracking-wide">
-                  {type === "players" ? "Top players" : "Top clubs"}
+                  {type === "players" ? t("ladder.topPlayers") : t("ladder.topClubs")}
                   <span className="ml-2 text-sm text-subtle">{region}</span>
                 </h2>
-                <span className="text-xs text-subtle">{rows.length} listed</span>
+                <span className="text-xs text-subtle">{t("ladder.listed", { count: rows.length })}</span>
               </div>
               <ul className="flex flex-col gap-1.5">
                 {rows.map((row) => (
@@ -145,7 +146,7 @@ export function LadderScreen() {
 
           <p className="flex items-center gap-1 text-[11px] text-subtle">
             <Clock className="size-3" />
-            Updated {formatRelative(data.updatedAt)} · {region} · official rankings
+            {t("ladder.note", { when: formatRelative(data.updatedAt), region })}
           </p>
         </>
       ) : null}
@@ -154,12 +155,13 @@ export function LadderScreen() {
 }
 
 function LadderRowItem({ row, type }: { row: LadderRow; type: LadderType }) {
+  const t = useT();
   const secondary =
     type === "clubs"
       ? row.memberCount != null
-        ? `${row.memberCount} members`
-        : "Member count not published"
-      : (row.clubName ?? "No club");
+        ? t("ladder.members", { count: row.memberCount })
+        : t("ladder.membersUnknown")
+      : (row.clubName ?? t("ladder.noClub"));
 
   return (
     <li className="flex min-h-14 items-center gap-3 rounded-xl bg-surface px-3 py-2">

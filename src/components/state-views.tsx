@@ -1,5 +1,6 @@
 import { WifiOff, TriangleAlert, Inbox } from "lucide-react";
 import type { ReactNode } from "react";
+import { useT } from "@/lib/i18n/provider";
 
 export function SkeletonRows({ count = 8 }: { count?: number }) {
   return (
@@ -46,6 +47,7 @@ export function ErrorState({
   body: string;
   onRetry?: () => void;
 }) {
+  const t = useT();
   return (
     <div className="flex flex-col items-center gap-2 rounded-2xl bg-surface px-5 py-10 text-center">
       <TriangleAlert className="size-8 text-danger" strokeWidth={1.5} />
@@ -57,7 +59,7 @@ export function ErrorState({
           onClick={onRetry}
           className="mt-2 min-h-11 rounded-xl bg-fg px-4 font-medium text-bg transition-transform duration-150 ease-out active:scale-[0.96]"
         >
-          Try again
+          {t("common.tryAgain")}
         </button>
       ) : null}
     </div>
@@ -65,12 +67,11 @@ export function ErrorState({
 }
 
 export function OfflineBanner({ stale }: { stale?: boolean }) {
+  const t = useT();
   return (
     <div className="mb-1 flex items-center gap-2 rounded-xl bg-surface-2 px-3 py-2 text-xs text-muted">
       <WifiOff className="size-3.5 shrink-0" />
-      {stale
-        ? "Offline — showing last saved snapshot. Numbers may be stale."
-        : "You're offline. Connect to refresh."}
+      {stale ? t("common.offlineStale") : t("common.offline")}
     </div>
   );
 }

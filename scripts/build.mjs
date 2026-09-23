@@ -15,6 +15,7 @@
  *   node scripts/build.mjs build --base=/n3x/
  */
 import { spawn } from "node:child_process";
+import { existsSync, mkdirSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -22,20 +23,37 @@ const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
 const QUIET_MS = 2000;
 const EXIT_GRACE_MS = 150;
 
+/** A deploy can tell this copy from the one the host is serving. */
+const APP_VERSION =
+  process.env.VITE_APP_VERSION ||
+  `${new Date().toISOString().slice(0, 16).replace(/[-:]/g, "")}Z`;
+process.env.VITE_APP_VERSION = APP_VERSION;
+
 const child = spawn(
   process.execPath,
   [join(ROOT, "scripts", "with-app-env.mjs"), "vite", ...process.argv.slice(2)],
-  { cwd: ROOT, stdio: ["ignore", "pipe", "pipe"] },
+  { cwd: ROOT, stdio: ["ignore", "pipe", "pipe"], env: process.env },
 );
 
 let sawPrerender = false;
 let quietTimer = null;
 let settled = false;
 
+function writeVersion() {
+  const dir = join(ROOT, ".vercel", "output", "static");
+  if (!existsSync(dir)) mkdirSync(dir, { recursive: true });
+  writeFileSync(
+    join(dir, "version.json"),
+    `${JSON.stringify({ version: APP_VERSION, builtAt: new Date().toISOString() })}\n`,
+  );
+  console.log(`[build] version ${APP_VERSION}`);
+}
+
 function finish(code) {
   if (settled) return;
   settled = true;
   clearTimeout(quietTimer);
+  if (code === 0) writeVersion();
   child.kill();
   // Give the forwarded output a moment to drain before leaving.
   setTimeout(() => process.exit(code), EXIT_GRACE_MS).unref();
@@ -62,3 +80,5 @@ child.on("error", (err) => {
 for (const signal of ["SIGINT", "SIGTERM", "SIGHUP"]) {
   process.on(signal, () => finish(130));
 }
+
+void sawPrerender;

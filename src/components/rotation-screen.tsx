@@ -3,10 +3,10 @@ import { Clock, Map } from "lucide-react";
 import { apiGet } from "@/lib/api/client";
 import { formatRelative } from "@/lib/meta/format";
 import { titleCaseMode } from "@/lib/meta/names";
+import { useT } from "@/lib/i18n/provider";
 import { useOnline } from "@/hooks/use-online";
 import { cn } from "@/lib/utils";
 import { EmptyState, ErrorState, OfflineBanner, SkeletonRows } from "./state-views";
-
 interface RotationEvent {
   slot: string;
   mode: string;
@@ -24,11 +24,11 @@ interface RotationPayload {
 
 /** The live event rotation from the `n3x-api` Worker (`GET /maps`). */
 export function RotationScreen() {
+  const t = useT();
   const online = useOnline();
   const query = useQuery({
     queryKey: ["rotation"],
     queryFn: () => apiGet<RotationPayload>("/maps"),
-    refetchInterval: 600_000,
   });
 
   const data = query.data;
@@ -42,31 +42,23 @@ export function RotationScreen() {
       {query.isLoading ? <SkeletonRows count={6} /> : null}
       {query.isError && !data ? (
         <ErrorState
-          title="Rotation unavailable"
-          body={
-            query.error instanceof Error ? query.error.message : "Could not load the map rotation."
-          }
+          title={t("state.maps.title")}
+          body={query.error instanceof Error ? query.error.message : t("state.maps.body")}
           onRetry={() => void query.refetch()}
         />
       ) : null}
 
       {data && active.length === 0 && upcoming.length === 0 ? (
-        <EmptyState
-          title="No events right now"
-          body="The rotation answered, but it lists no live or upcoming events. Check back after the next rotation."
-        />
+        <EmptyState title={t("maps.noEvents.title")} body={t("maps.noEvents.body")} />
       ) : null}
 
-      {active.length > 0 ? (
-        <RotationSection title="Live now" events={active} live />
-      ) : null}
-      {upcoming.length > 0 ? <RotationSection title="Upcoming" events={upcoming} /> : null}
+      {active.length > 0 ? <RotationSection title={t("maps.active")} events={active} live /> : null}
+      {upcoming.length > 0 ? <RotationSection title={t("maps.upcoming")} events={upcoming} /> : null}
 
       {data ? (
         <p className="flex items-center gap-1 text-[11px] text-subtle">
           <Clock className="size-3" />
-          Updated {formatRelative(data.updatedAt)}
-          {data.source ? ` · ${data.source}` : ""}
+          {t("maps.note", { when: formatRelative(data.updatedAt) })}
         </p>
       ) : null}
     </div>
@@ -82,13 +74,12 @@ function RotationSection({
   events: RotationEvent[];
   live?: boolean;
 }) {
+  const t = useT();
   return (
     <section>
       <div className="mb-1.5 flex items-baseline justify-between gap-2">
         <h2 className="font-display text-lg tracking-wide">{title}</h2>
-        <span className="text-xs text-subtle">
-          {events.length} {events.length === 1 ? "event" : "events"}
-        </span>
+        <span className="text-xs text-subtle">{events.length}</span>
       </div>
       <ul className="flex flex-col gap-1.5">
         {events.map((event, i) => (
@@ -105,9 +96,9 @@ function RotationSection({
               <Map className="size-3.5" />
             </span>
             <div className="min-w-0 flex-1">
-              <p className="truncate font-medium">{event.map || "Map not published"}</p>
+              <p className="truncate font-medium">{event.map || t("maps.mapUnknown")}</p>
               <p className="truncate text-xs text-subtle">
-                {event.mode ? titleCaseMode(event.mode) : "Mode not published"}
+                {event.mode ? titleCaseMode(event.mode) : t("maps.modeUnknown")}
                 <span aria-hidden> · </span>
                 <span className="tabular">{formatWindow(event.startTime, event.endTime)}</span>
               </p>

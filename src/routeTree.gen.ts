@@ -14,6 +14,7 @@ import { Route as AboutRouteImport } from './routes/about'
 import { Route as LadderRouteImport } from './routes/ladder'
 import { Route as MapsRouteImport } from './routes/maps'
 import { Route as MetaRouteImport } from './routes/meta'
+import { Route as SettingsRouteImport } from './routes/settings'
 import { Route as StatsRouteImport } from './routes/stats'
 import { Route as MTagRouteImport } from './routes/m.$tag'
 
@@ -42,6 +43,11 @@ const MetaRoute = MetaRouteImport.update({
   path: '/meta',
   getParentRoute: () => rootRouteImport,
 } as any)
+const SettingsRoute = SettingsRouteImport.update({
+  id: '/settings',
+  path: '/settings',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const StatsRoute = StatsRouteImport.update({
   id: '/stats',
   path: '/stats',
@@ -59,6 +65,7 @@ export interface FileRoutesByFullPath {
   '/ladder': typeof LadderRoute
   '/maps': typeof MapsRoute
   '/meta': typeof MetaRoute
+  '/settings': typeof SettingsRoute
   '/stats': typeof StatsRoute
   '/m/$tag': typeof MTagRoute
 }
@@ -68,6 +75,7 @@ export interface FileRoutesByTo {
   '/ladder': typeof LadderRoute
   '/maps': typeof MapsRoute
   '/meta': typeof MetaRoute
+  '/settings': typeof SettingsRoute
   '/stats': typeof StatsRoute
   '/m/$tag': typeof MTagRoute
 }
@@ -78,15 +86,31 @@ export interface FileRoutesById {
   '/ladder': typeof LadderRoute
   '/maps': typeof MapsRoute
   '/meta': typeof MetaRoute
+  '/settings': typeof SettingsRoute
   '/stats': typeof StatsRoute
   '/m/$tag': typeof MTagRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
-    '/' | '/about' | '/ladder' | '/maps' | '/meta' | '/stats' | '/m/$tag'
+    | '/'
+    | '/about'
+    | '/ladder'
+    | '/maps'
+    | '/meta'
+    | '/settings'
+    | '/stats'
+    | '/m/$tag'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/about' | '/ladder' | '/maps' | '/meta' | '/stats' | '/m/$tag'
+  to:
+    | '/'
+    | '/about'
+    | '/ladder'
+    | '/maps'
+    | '/meta'
+    | '/settings'
+    | '/stats'
+    | '/m/$tag'
   id:
     | '__root__'
     | '/'
@@ -94,6 +118,7 @@ export interface FileRouteTypes {
     | '/ladder'
     | '/maps'
     | '/meta'
+    | '/settings'
     | '/stats'
     | '/m/$tag'
   fileRoutesById: FileRoutesById
@@ -104,6 +129,7 @@ export interface RootRouteChildren {
   LadderRoute: typeof LadderRoute
   MapsRoute: typeof MapsRoute
   MetaRoute: typeof MetaRoute
+  SettingsRoute: typeof SettingsRoute
   StatsRoute: typeof StatsRoute
   MTagRoute: typeof MTagRoute
 }
@@ -145,6 +171,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof MetaRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/settings': {
+      id: '/settings'
+      path: '/settings'
+      fullPath: '/settings'
+      preLoaderRoute: typeof SettingsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/stats': {
       id: '/stats'
       path: '/stats'
@@ -168,6 +201,7 @@ const rootRouteChildren: RootRouteChildren = {
   LadderRoute: LadderRoute,
   MapsRoute: MapsRoute,
   MetaRoute: MetaRoute,
+  SettingsRoute: SettingsRoute,
   StatsRoute: StatsRoute,
   MTagRoute: MTagRoute,
 }

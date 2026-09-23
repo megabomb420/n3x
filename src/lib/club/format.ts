@@ -23,15 +23,6 @@ export function nameColorToCss(raw: string | null | undefined): string | undefin
   return undefined;
 }
 
-export function roleLabel(role: string | null | undefined): string {
-  if (!role) return "Member";
-  if (role === "president") return "President";
-  if (role === "vicePresident") return "Vice President";
-  if (role === "senior") return "Senior";
-  if (role === "member") return "Member";
-  return role;
-}
-
 /** Club order: leadership first, then trophies. */
 export function sortMembers(members: ClubMember[]): ClubMember[] {
   return [...members].sort((a, b) => {

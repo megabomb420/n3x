@@ -193,6 +193,7 @@ export default defineConfig(({ command, isPreview }) => ({
         { path: "/ladder" },
         { path: "/maps" },
         { path: "/about" },
+        { path: "/settings" },
       ],
     }),
     ...(command === "build" || isPreview

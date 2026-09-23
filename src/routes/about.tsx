@@ -1,17 +1,19 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { ChevronLeft } from "lucide-react";
 import { AppShell } from "@/components/app-shell";
+import { useT } from "@/lib/i18n/provider";
 
 export const Route = createFileRoute("/about")({ component: AboutPage });
 
 function AboutPage() {
+  const t = useT();
   return (
-    <AppShell title="Data">
+    <AppShell title={t("about.title")}>
       <article className="space-y-5 px-4 pb-8 text-sm leading-relaxed text-muted">
         <Link to="/" className="inline-flex min-h-11 items-center gap-1 text-fg">
-          <ChevronLeft className="size-4" /> Back to club
+          <ChevronLeft className="size-4" /> {t("common.back")}
         </Link>
-
+        <p className="text-[11px] text-subtle">{t("about.note")}</p>
         <section>
           <h2 className="font-display text-2xl tracking-wide text-fg">Data / methodology</h2>
           <p className="mt-2">
