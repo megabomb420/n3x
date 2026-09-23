@@ -1,6 +1,15 @@
 import { Link, useRouterState } from "@tanstack/react-router";
 import { useQueryClient } from "@tanstack/react-query";
-import { ChartColumn, Map, RotateCw, Settings, Swords, Users, Youtube } from "lucide-react";
+import {
+  ChartColumn,
+  Map,
+  RotateCw,
+  Settings,
+  Smartphone,
+  Swords,
+  Users,
+  Youtube,
+} from "lucide-react";
 import { useCallback, useEffect, useRef, type ReactNode } from "react";
 import { useT, type StringKey } from "@/lib/i18n/provider";
 import { cacheClear } from "@/lib/meta/cache";
@@ -144,9 +153,8 @@ export function AppShell({
   }, []);
 
   useEffect(() => {
-    // iOS ignores the manifest's `orientation` and refuses `lock()` outside
-    // fullscreen, so this only lands on platforms that support it. A rejection
-    // is the normal case, not an error.
+    // WebKit ignores the manifest's orientation in installed apps and refuses
+    // lock() outside fullscreen. The landscape cover below is the fallback.
     const orientation = window.screen?.orientation as
       (ScreenOrientation & { lock?: (o: string) => Promise<void> }) | undefined;
     void orientation?.lock?.("portrait")?.catch(() => undefined);
@@ -224,6 +232,14 @@ export function AppShell({
           })}
         </div>
       </nav>
+      <div
+        className="portrait-only fixed inset-0 z-40 flex-col items-center justify-center gap-4 bg-bg p-8 text-center"
+        role="alert"
+      >
+        <Smartphone aria-hidden className="size-12 text-gold" strokeWidth={1.5} />
+        <h2 className="font-display text-3xl">{t("common.portraitTitle")}</h2>
+        <p className="max-w-xs text-sm text-muted">{t("common.portraitBody")}</p>
+      </div>
     </div>
   );
 }

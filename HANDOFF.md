@@ -14,6 +14,8 @@ Five tabs plus **Settings**: **Club**, **Stats**, **Meta**, **Ladder**, **Maps**
 
 Owner decision (23 Sep 2026): **delete / throw away** the old Grok/Vercel host https://n3x.grok.me/ — it still serves a stale build, nothing in this app points at it, and it must not stay as a live URL. Do not republish or link it. Issue #1 carries the closing summary of the old 403 era; history below is provenance only.
 
+On iOS 26 standalone, the owner supplied a normal and a pinch-out screenshot: the cards stayed aligned while the tabs briefly moved lower after the pinch. The normal view still has a band beneath them. A `default` opaque status-bar style is now being tried in place of `black`; this is **not yet confirmed on the installed iPhone** and must not be described as fixing the band. Pinch zoom is disabled by the viewport meta plus gesture/touch guards. In landscape on a touch device, a portrait prompt covers the app; WebKit still controls the hardware orientation and will not honour a true web-app lock. After deployment, force-quit/reopen the installed app and capture `?diag=1` at rest: compare `inner`, `vv`, `doc`, `env top`, and `nav` with the screen bottom.
+
 Everything below the history marker is the record of how the app got here — starting with the original Grok-export handoff and its BTN 403 investigation. Those sections describe a state that no longer exists; read them as provenance, not as instructions.
 
 ## GitHub checkout repair (23 Sep 2026)
@@ -26,7 +28,7 @@ The production-browser check caught a real deep-link bug that the root-only smok
 
 The GitHub Pages workflow for code commit `6424dbc` succeeded. On the deployed `https://megabomb420.github.io/n3x/` host, the Settings link resolved to `/n3x/settings/`, and a no-slash `/n3x/settings` navigation through the controlling service worker returned **Settings HTML**, rendered Settings, and produced zero page errors. This checks the non-root base as well as the local root build.
 
-The iOS 26 band remains **unverified after the already-shipped `black` status-bar change**: no new physical-device probe was supplied. [Apple's Safari reference](https://developer.apple.com/library/archive/documentation/AppleApplications/Reference/SafariHTMLRef/Articles/MetaTags.html) says both `black` and `default` place web content below the status bar, but that is not evidence for the installed iOS 26 app; do not publish another viewport guess as a fix. Portrait lock is still a WebKit/standalone limitation. The owner will unpublish `n3x.grok.me` personally; this work does not touch that host. A push to `main` automatically updates GitHub Pages; Cloudflare Pages requires its own deploy and is not updated here.
+The iOS 26 bottom band remains **unverified with the new `default` status-bar experiment**. [Apple's Safari reference](https://developer.apple.com/library/archive/documentation/AppleApplications/Reference/SafariHTMLRef/Articles/MetaTags.html) says both `black` and `default` place web content below the status bar, but that is not evidence for the installed iOS 26 app. Portrait lock remains a WebKit/standalone limitation; the touch-landscape cover is an interface fallback, not a hardware lock. The owner will unpublish `n3x.grok.me` personally; this work does not touch that host. A push to `main` automatically updates GitHub Pages; Cloudflare Pages requires its own deploy.
 
 ## Parity check against Brawl Time Ninja and Brawlify (23 Sep 2026)
 
@@ -279,9 +281,9 @@ What the page is given: `inner` = `vv` = `doc` = **812**, screen **874**, `100lv
 - `100svh` → `height: 100%` (d978f9a): no visible change; the layout viewport is short either way.
 - Growing the column to `window.innerHeight` when it exceeds the layout viewport (fbe97fa): never fires — on this device `inner` *is* the short 812, so there is nothing taller to grow to.
 - `--inset-bottom: 0` while the layout viewport is short and `env(safe-area-inset-top)` is real (a995f84): the one real gain. The home-indicator inset then lies *below* the paintable area, so reserving it only pushed the tabs up; dropping it moved them ~38 px down, and the tab rows are 48 px.
-- `black-translucent` → `black` plus `color-scheme: dark` (834b08d): meant to make iOS place the web view *below* the status bar so it reaches the bottom edge. The band has not been re-measured on the device since — that screenshot is the next thing to look at.
+- `black-translucent` → `black` plus `color-scheme: dark` (834b08d): intended to put the web view below the status bar; the owner's normal screenshot still shows a band. A new trial changes `black` to `default`, but needs a fresh installed-app measurement.
 
-**What is still worth trying.** `apple-mobile-web-app-status-bar-style: default`, then no status-bar meta at all; if neither moves it, accept that the band is the system's and stop burning attempts on it. One screenshot from the installed app after a full relaunch (swipe the app away, reopen, then `?diag=1`) settles it: `env top 0px` means the view sits below the status bar and the band should be gone; `env top 62px` means iOS kept the anchored-at-top sizing and the space is unreachable. The probe is in the app for exactly this — do not remove it without leaving a replacement way to read those four numbers.
+**Current experiment.** `apple-mobile-web-app-status-bar-style: default` is being tried; if it does not move the view, no status-bar meta is the remaining variant. One screenshot from the installed app after a full relaunch (swipe the app away, reopen, then `?diag=1`) settles it: `env top 0px` means the view sits below the status bar and the band should be gone; `env top 62px` means iOS kept the anchored-at-top sizing and the space is unreachable. The probe is in the app for exactly this — do not remove it without leaving a replacement way to read those four numbers.
 
 ### What fought back, and what is not done
 
@@ -290,9 +292,9 @@ Written by the session that added the Ranked board, the swipe, the stale-build g
 **Asked for, not delivered.**
 
 1. **The dead band under the nav** — asked twice, four fixes shipped, the last ~62 px are still not ours. Details and the remaining options are in the OPEN section above; do not start from the same assumptions.
-2. **Portrait lock.** The manifest asks for `orientation: portrait` and the shell calls `screen.orientation.lock("portrait")` behind a guard, but WebKit ignores the manifest member for home-screen apps and refuses the lock outside fullscreen — an iPhone still rotates. A CSS "fake lock" (rotating the layout on `orientationchange`) was offered and deliberately not built: it breaks touch coordinates, the keyboard and the safe areas. So on iOS this request cannot be honoured from a web app.
+2. **Portrait lock.** The manifest asks for `orientation: portrait` and the shell calls `screen.orientation.lock("portrait")` behind a guard, but WebKit ignores the manifest member for home-screen apps and refuses the lock outside fullscreen — an iPhone still rotates. Rotating the layout in CSS would break touch coordinates, the keyboard and safe areas; instead, touch-landscape hides the app behind a rotate-back prompt. This is not a hardware orientation lock.
 3. **"In Ladder remove Elo"** was read as the Stats screen, because the Ladder screen shows no Elo to remove — the official rankings endpoint is trophy-only. Elo therefore left Stats entirely and now lives only on the club's Ranked board. If the ask was about the Ladder screen itself, it is not done, and there is nothing in the API to put there.
-4. **The status-bar variants** (`apple-mobile-web-app-status-bar-style: default`, then no meta at all) are still untried. Each is one deploy and one full app relaunch, then a probe screenshot; see the OPEN section.
+4. **The status-bar variants** (`apple-mobile-web-app-status-bar-style: default`, then no meta at all): `default` is currently under test and still needs an installed-app probe; no meta remains untried. Each is one deploy and one full app relaunch, then a probe screenshot; see the OPEN section.
 
 **Where the first explanation was wrong.**
 

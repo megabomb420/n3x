@@ -1,4 +1,5 @@
 import { createRootRoute, HeadContent, Outlet, Scripts } from "@tanstack/react-router";
+import { useEffect } from "react";
 import { AuthProvider } from "@/lib/auth/provider";
 import { LanguageProvider } from "@/lib/i18n/provider";
 import { PreviewHostBridge } from "@/components/preview-host-bridge";
@@ -15,7 +16,8 @@ export const Route = createRootRoute({
       { charSet: "utf-8" },
       {
         name: "viewport",
-        content: "width=device-width, initial-scale=1, viewport-fit=cover",
+        content:
+          "width=device-width, initial-scale=1, minimum-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover",
       },
       { title: APP_NAME },
       {
@@ -27,11 +29,10 @@ export const Route = createRootRoute({
       { name: "color-scheme", content: "dark" },
       { name: "apple-mobile-web-app-capable", content: "yes" },
       { name: "mobile-web-app-capable", content: "yes" },
-      // `black-translucent` is deprecated and, on iOS 26, makes the standalone
-      // web view the screen *minus* the status bar anchored at the top — the
-      // header paints under the clock and the bottom 62 pt are lost. An opaque
-      // status bar puts the view below it, where it belongs.
-      { name: "apple-mobile-web-app-status-bar-style", content: "black" },
+      // Test the opaque default style on installed iOS 26: unlike a CSS
+      // offset, it can change which part of the screen WebKit gives the page.
+      // The previous black style left an unpaintable band below the tabs.
+      { name: "apple-mobile-web-app-status-bar-style", content: "default" },
       { name: "apple-mobile-web-app-title", content: APP_NAME },
     ],
     links: [
@@ -51,6 +52,21 @@ export const Route = createRootRoute({
 });
 
 function RootDocument() {
+  useEffect(() => {
+    const preventZoom = (event: Event) => event.preventDefault();
+    const preventMultitouchZoom = (event: TouchEvent) => {
+      if (event.touches.length > 1) event.preventDefault();
+    };
+    document.addEventListener("gesturestart", preventZoom, { passive: false });
+    document.addEventListener("gesturechange", preventZoom, { passive: false });
+    document.addEventListener("touchmove", preventMultitouchZoom, { passive: false });
+    return () => {
+      document.removeEventListener("gesturestart", preventZoom);
+      document.removeEventListener("gesturechange", preventZoom);
+      document.removeEventListener("touchmove", preventMultitouchZoom);
+    };
+  }, []);
+
   return (
     <html lang="en" className="dark antialiased" suppressHydrationWarning>
       <head>

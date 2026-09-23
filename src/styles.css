@@ -38,6 +38,7 @@
     -moz-osx-font-smoothing: grayscale;
     background: var(--color-bg);
     color: var(--color-fg);
+    touch-action: pan-x pan-y;
   }
 
   html,
@@ -129,6 +130,20 @@
   }
   .safe-bottom {
     padding-bottom: calc(var(--inset-bottom, env(safe-area-inset-bottom, 0px)) + 0.25rem);
+  }
+}
+
+/* WebKit does not honour the manifest's portrait orientation on iPhone.
+   Cover touch layouts rather than rotating touch targets and the keyboard. */
+.portrait-only {
+  display: none;
+}
+@media (orientation: landscape) and (pointer: coarse) {
+  :has(> .portrait-only) > :not(.portrait-only) {
+    visibility: hidden;
+  }
+  .portrait-only {
+    display: flex;
   }
 }
 
