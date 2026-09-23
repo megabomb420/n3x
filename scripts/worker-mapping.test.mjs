@@ -9,14 +9,18 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import {
   bareTag,
+  brawlMetricsSlug,
   classifyCreatorTitle,
   diffRoster,
   ladderCountry,
+  looseKey,
   mapBattles,
   mapClub,
   mapPlayer,
   mapRanking,
   mapRotation,
+  parseBrawlMetricsIndex,
+  parseBrawlMetricsMapPage,
   parseBrawlMetricsTierList,
   parseCreatorFeed,
   plainName,
@@ -93,10 +97,21 @@ test("the rotation splits into live and upcoming against the clock", () => {
   assert.equal(early.active.length, 0);
   assert.equal(early.upcoming.length, 2, "both windows are still ahead at 07:00");
   const finished = mapRotation(
-    [{ startTime: "20260922T000000.000Z", endTime: "20260922T060000.000Z", slotId: 1, event: { mode: "heist", map: "Hot Potato" } }],
+    [
+      {
+        startTime: "20260922T000000.000Z",
+        endTime: "20260922T060000.000Z",
+        slotId: 1,
+        event: { mode: "heist", map: "Hot Potato" },
+      },
+    ],
     Date.parse("2026-09-22T20:00:00.000Z"),
   );
-  assert.equal(finished.active.length + finished.upcoming.length, 0, "a finished window is neither");
+  assert.equal(
+    finished.active.length + finished.upcoming.length,
+    0,
+    "a finished window is neither",
+  );
 });
 
 test("a player payload becomes the app's profile with Ranked fields", () => {
@@ -163,7 +178,13 @@ test("the battle log becomes the app's battle rows, Ranked queues included", () 
           result: "victory",
           trophyChange: 8,
           teams: [
-            [{ tag: "#AAA200JJJ", name: "Edu", brawler: { id: 16000008, name: "NITA", power: 11, trophies: 850 } }],
+            [
+              {
+                tag: "#AAA200JJJ",
+                name: "Edu",
+                brawler: { id: 16000008, name: "NITA", power: 11, trophies: 850 },
+              },
+            ],
             [{ tag: "#ZZZ", name: "Other", brawler: { id: 16000000, name: "SHELLY" } }],
           ],
         },
@@ -176,7 +197,13 @@ test("the battle log becomes the app's battle rows, Ranked queues included", () 
           type: "soloRanked",
           result: "defeat",
           trophyChange: -50,
-          players: [{ tag: "#AAA200JJJ", name: "Edu", brawler: { id: 16000002, name: "BULL", trophies: 16 } }],
+          players: [
+            {
+              tag: "#AAA200JJJ",
+              name: "Edu",
+              brawler: { id: 16000002, name: "BULL", trophies: 16 },
+            },
+          ],
         },
       },
     ],
@@ -259,7 +286,9 @@ test("leaderboards keep the rank the API returned", () => {
     clubName: "'N3X",
     memberCount: null,
   });
-  const clubs = mapRanking("clubs", { items: [{ rank: 2, tag: "#CLUB", name: "Club", trophies: 900, memberCount: 30 }] });
+  const clubs = mapRanking("clubs", {
+    items: [{ rank: 2, tag: "#CLUB", name: "Club", trophies: 900, memberCount: 30 }],
+  });
   assert.equal(clubs.rows[0].memberCount, 30);
 });
 
@@ -299,8 +328,90 @@ test("a published tier list is read from the table, and a promo page is not one"
     <tr><td>not a tier row</td></tr>`;
   const rows = parseBrawlMetricsTierList(html);
   assert.equal(rows.length, 1);
-  assert.deepEqual(rows[0], { name: "Wendy", tier: "S+", role: "Support", winRate: 67.6, useRate: 0.81 });
+  assert.deepEqual(rows[0], {
+    name: "Wendy",
+    tier: "S+",
+    role: "Support",
+    winRate: 67.6,
+    useRate: 0.81,
+  });
   assert.deepEqual(parseBrawlMetricsTierList("<p>Join the channel</p>"), []);
+});
+
+/** The publisher's own markup for one map page, shortened but not rewritten:
+ *  values and keys sit in sibling spans, and React splits `0.7<!-- -->%`. */
+const mapPageFixture = `
+<div class="map-hero-metric map-hero-metric-battles"><span class="map-hero-metric-v">1,330,206</span><span class="map-hero-metric-k">Total Battles</span></div>
+<div class="map-hero-metric map-hero-metric-updated"><span class="map-hero-metric-v">Sep 23, 2026, 3:03 PM</span><span class="map-hero-metric-k">Last Updated</span></div>
+<h3 class="map-bucket-title">Best Picks</h3><p class="map-bucket-sub">High win rate and high use rate</p>
+<div class="map-bucket-row"><a class="map-bucket-chip" href="/brawlers/rosa"><span class="map-bucket-name">Rosa</span><span class="map-bucket-stats"><b class="map-bucket-wr">75%</b><span class="map-bucket-ur">0.7<!-- -->%</span></span></a><a class="map-bucket-chip" href="/brawlers/bolt"><span class="map-bucket-name">Bolt</span><span class="map-bucket-stats"><b class="map-bucket-wr">73.1%</b><span class="map-bucket-ur">0.6<!-- -->%</span></span></a></div>
+<h3 class="map-bucket-title">Not Recommended</h3><p class="map-bucket-sub">Low win and use rates</p>
+<div class="map-bucket-row"><a class="map-bucket-chip" href="/brawlers/nita"><span class="map-bucket-name">Nita</span><span class="map-bucket-stats"><b class="map-bucket-wr">28.8%</b><span class="map-bucket-ur">3.4<!-- -->%</span></span></a></div>
+<table class="tier-table"><thead><tr><th>Rank</th><th class="col-class">Class</th><th>Brawler</th><th class="col-tier" title="Tiers are assigned by percentile of the composite score: S+ top 2%, S next 6%, A next 15%, B next 27%, C next 30%, D bottom 20%.">Tier</th><th class="active-col" aria-sort="descending"><button type="button" class="stat-table-sort active">Win Rate<span aria-hidden="true">▼</span></button></th><th aria-sort="none"><button type="button" class="stat-table-sort">Use Rate</button></th></tr></thead><tbody>
+<tr><td>1</td><td class="col-class"><span class="class-chip-static"><i class="classdot"></i>Tank</span></td><td><a class="tier-table-brawler" href="/brawlers/rosa"><span class="tier-table-avatar"></span>Rosa</a></td><td class="col-tier"><span class="tier-badge tier-a">A</span></td><td><span class="wr-cell">75<!-- -->%</span></td><td>0.7<!-- -->%</td></tr>
+<tr><td>2</td><td class="col-class"><span class="class-chip-static"><i class="classdot"></i>Tank</span></td><td><a class="tier-table-brawler" href="/brawlers/bolt"><span class="tier-table-avatar"></span>Bolt</a></td><td class="col-tier"><span class="tier-badge tier-splus">S+</span></td><td><span class="wr-cell">73.1<!-- -->%</span></td><td>0.6<!-- -->%</td></tr>
+</tbody></table>`;
+
+/** A Showdown page: the same page shell, but its table ranks by placement. */
+const showdownPageFixture = `
+<div class="map-hero-metric map-hero-metric-battles"><span class="map-hero-metric-v">4,389,780</span><span class="map-hero-metric-k">Total Battles</span></div>
+<div class="map-hero-metric map-hero-metric-updated"><span class="map-hero-metric-v">Sep 23, 2026, 3:45 PM<!-- --> UTC</span><span class="map-hero-metric-k">Last Updated</span></div>
+<h3 class="map-bucket-title">Best Picks</h3><p class="map-bucket-sub">High top 4 rate and high use rate</p>
+<div class="map-bucket-row"><a class="map-bucket-chip" href="/brawlers/rosa"><span class="map-bucket-name">Rosa</span><span class="map-bucket-stats"><b class="map-bucket-wr">78.4%</b><span class="map-bucket-ur">1.2<!-- -->%</span></span></a></div>
+<table class="tier-table"><thead><tr><th>Rank</th><th class="col-class">Class</th><th>Brawler</th><th class="col-tier" title="Overall tier list, the same tier this brawler has on /tier-list/overall, not map-specific.">Tier</th><th class="col-games" aria-sort="none"><button type="button" class="stat-table-sort">Games</button></th><th aria-sort="none"><button type="button" class="stat-table-sort">Avg Rank</button></th><th class="col-first" aria-sort="none"><button type="button" class="stat-table-sort">1st Rate</button></th><th class="active-col" aria-sort="descending"><button type="button" class="stat-table-sort active">Top 4 Rate<span aria-hidden="true">▼</span></button></th></tr></thead><tbody>
+<tr><td>1</td><td class="col-class"><span class="class-chip-static"><i class="classdot" style="background:var(--muted)"></i>Tank</span></td><td><a class="tier-table-brawler" href="/brawlers/rosa"><span class="tier-table-avatar"></span>Rosa</a></td><td class="col-tier"><span class="tier-badge tier-a">A</span></td><td class="col-games">42,735</td><td>#<!-- -->2.66</td><td class="col-first">61.5%</td><td>78.4<!-- -->%</td></tr>
+</tbody></table>`;
+
+test("a map page keeps the publisher's sample, buckets and rows apart", () => {
+  const page = parseBrawlMetricsMapPage(mapPageFixture);
+  assert.equal(page.sampleBattles, 1330206);
+  assert.equal(page.updatedAt, "Sep 23, 2026, 3:03 PM");
+  assert.equal(page.metric, "winRate");
+  assert.deepEqual(
+    page.buckets.map((bucket) => bucket.kind),
+    ["picks", "notRecommended"],
+  );
+  assert.deepEqual(page.buckets[0].items[0], { name: "Rosa", winRate: 75, useRate: 0.7 });
+  assert.deepEqual(
+    page.rows[1],
+    { name: "Bolt", tier: "S+", role: "Tank", winRate: 73.1, useRate: 0.6, games: null },
+    "the split text nodes must not break a number, and class and tier are read",
+  );
+});
+
+test("a Showdown page is read as placement, never relabelled a win rate", () => {
+  const page = parseBrawlMetricsMapPage(showdownPageFixture);
+  assert.equal(page.metric, "top4");
+  assert.equal(page.sampleBattles, 4389780);
+  assert.deepEqual(
+    page.rows[0],
+    { name: "Rosa", tier: "A", role: "Tank", winRate: 78.4, useRate: null, games: 42735 },
+    "Showdown publishes top-4 rate and games, and no use rate",
+  );
+});
+
+test("a page without a table parses to nothing, and the publisher's index names its own slugs", () => {
+  assert.deepEqual(parseBrawlMetricsMapPage("<html></html>"), {
+    sampleBattles: 0,
+    updatedAt: null,
+    metric: null,
+    rows: [],
+    buckets: [],
+  });
+
+  const index = parseBrawlMetricsIndex(`
+    <div class="maps-grid">
+      <a class="map-card is-not-live" href="/maps/solo-showdown/acid-lakes"><span class="map-card-frame"><img src="/Maps/15000956.webp"/></span><span class="map-card-name">Acid Lakes</span></a>
+      <a class="map-card is-not-live" href="/maps/duo-showdown/acid-lakes"><span class="map-card-frame"><img src="/Maps/15000956.webp"/></span><span class="map-card-name">Acid Lakes</span></a>
+    </div>`);
+  assert.deepEqual(index, [
+    { mode: "solo-showdown", map: "acid-lakes", name: "Acid Lakes" },
+    { mode: "duo-showdown", map: "acid-lakes", name: "Acid Lakes" },
+  ]);
+
+  assert.equal(looseKey("Belle's Rock"), looseKey("Belles Rock"));
+  assert.equal(brawlMetricsSlug("Solo Showdown"), "solo-showdown");
+  assert.equal(brawlMetricsSlug("Belle's Rock"), "belles-rock");
 });
 
 test("tags and paths are normalised before they reach the API", () => {

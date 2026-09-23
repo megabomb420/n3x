@@ -86,7 +86,10 @@ function num(value, fallback = 0) {
 
 /** The API wraps coloured name parts in `<cN>…</c>`; the app shows plain text. */
 export function plainName(value) {
-  return String(value ?? "").replace(/<c\d*>/gi, "").replace(/<\/c>/gi, "").trim();
+  return String(value ?? "")
+    .replace(/<c\d*>/gi, "")
+    .replace(/<\/c>/gi, "")
+    .trim();
 }
 
 /** Official club payload → the app's ClubLive shape. */
@@ -130,12 +133,24 @@ export function diffRoster(previous, next) {
   const events = [];
   for (const [tag, member] of after) {
     if (!before.has(tag)) {
-      events.push({ kind: "join", playerTag: tag, playerName: member.name, roleFrom: null, roleTo: member.role });
+      events.push({
+        kind: "join",
+        playerTag: tag,
+        playerName: member.name,
+        roleFrom: null,
+        roleTo: member.role,
+      });
     }
   }
   for (const [tag, member] of before) {
     if (!after.has(tag)) {
-      events.push({ kind: "leave", playerTag: tag, playerName: member.name, roleFrom: member.role, roleTo: null });
+      events.push({
+        kind: "leave",
+        playerTag: tag,
+        playerName: member.name,
+        roleFrom: member.role,
+        roleTo: null,
+      });
     }
   }
   for (const [tag, member] of after) {
@@ -221,7 +236,9 @@ function readBattle(item, playerTag) {
       for (const player of Array.isArray(entry) ? entry : [entry]) {
         if (bareTag(player?.tag) !== want) continue;
         brawler = typeof player?.brawler?.name === "string" ? player.brawler.name : null;
-        brawlerTrophies = Number.isFinite(player?.brawler?.trophies) ? player.brawler.trophies : null;
+        brawlerTrophies = Number.isFinite(player?.brawler?.trophies)
+          ? player.brawler.trophies
+          : null;
       }
     }
   }
@@ -234,7 +251,12 @@ function readBattle(item, playerTag) {
     result,
     victory: result === null ? null : result === "victory",
     trophyChange: Number.isFinite(battle.trophyChange) ? battle.trophyChange : null,
-    mode: typeof event.mode === "string" ? event.mode : typeof battle.mode === "string" ? battle.mode : null,
+    mode:
+      typeof event.mode === "string"
+        ? event.mode
+        : typeof battle.mode === "string"
+          ? battle.mode
+          : null,
     map: typeof event.map === "string" ? event.map : null,
     brawler,
     brawlerTrophies,
@@ -266,7 +288,9 @@ export function mapBattles(items, playerTag) {
 
 /** Two-letter region, or `global`. Anything else is rejected before it hits the path. */
 export function ladderCountry(value) {
-  const country = String(value ?? "global").trim().toLowerCase();
+  const country = String(value ?? "global")
+    .trim()
+    .toLowerCase();
   return /^(global|[a-z]{2})$/.test(country) ? country : null;
 }
 
@@ -317,7 +341,9 @@ function upstreamUnavailable(err) {
 async function cached(request, ctx, ttlSeconds, produce) {
   if (request.method !== "GET") return produce();
   const cache = caches.default;
-  const key = new Request(`${request.url}${request.url.includes("?") ? "&" : "?"}v=${CACHE_VERSION}`);
+  const key = new Request(
+    `${request.url}${request.url.includes("?") ? "&" : "?"}v=${CACHE_VERSION}`,
+  );
   const hit = await cache.match(key);
   if (hit) return hit;
   const res = await produce();
@@ -453,7 +479,9 @@ export function mapRotation(entries, now = Date.now()) {
     active: events
       .filter((event) => startsAt(event) <= now && endsAt(event) > now)
       .sort((a, b) => a.slot.localeCompare(b.slot, undefined, { numeric: true })),
-    upcoming: events.filter((event) => startsAt(event) > now).sort((a, b) => startsAt(a) - startsAt(b)),
+    upcoming: events
+      .filter((event) => startsAt(event) > now)
+      .sort((a, b) => startsAt(a) - startsAt(b)),
     source: "Supercell Brawl Stars API",
   };
 }
@@ -484,8 +512,18 @@ async function handleBattles(request, env, ctx, tag) {
 const CREATORS = [
   { id: "spenlc", name: "SpenLC", handle: "@spenlc", channelId: "UCsuS8BRN4y6_QoBvAqTtSSg" },
   { id: "ash", name: "Ash", handle: "@ashbrawlstars", channelId: "UC874WmmCVtIwTG4gQbWHKUQ" },
-  { id: "kairos", name: "KairosTime", handle: "@kairosgaming", channelId: "UCmG2EhfOwSjpPMX4LjGY__A" },
-  { id: "cryingman", name: "CryingMan", handle: "@cryingman", channelId: "UCGShu88Lh2ZAtXX0qbV9fXA" },
+  {
+    id: "kairos",
+    name: "KairosTime",
+    handle: "@kairosgaming",
+    channelId: "UCmG2EhfOwSjpPMX4LjGY__A",
+  },
+  {
+    id: "cryingman",
+    name: "CryingMan",
+    handle: "@cryingman",
+    channelId: "UCGShu88Lh2ZAtXX0qbV9fXA",
+  },
   { id: "rey", name: "Rey", handle: "@ReyBrawlStars", channelId: "UCUZks0tPvD_ZbNwtBzyR_JQ" },
   { id: "lex", name: "Lex", handle: "@LexBrawlStars", channelId: "UC4yh9rj_cPT77it63N14HQg" },
   { id: "bobby", name: "bobby", handle: "@bobbybrawlstars", channelId: "UCcvJdy945lh9KNQnW2yr_0A" },
@@ -496,7 +534,8 @@ const CREATORS_INDEX_TTL_SECONDS = 300;
 const CHANNEL_ENTRIES_KEPT = 12;
 /** The last good reading of a channel outlives its cache, for rate-limited days. */
 const LAST_GOOD_TTL_SECONDS = 6 * 60 * 60;
-const lastGoodKey = (id) => new Request(`https://relay.invalid/channel-last/${id}?v=${CACHE_VERSION}`);
+const lastGoodKey = (id) =>
+  new Request(`https://relay.invalid/channel-last/${id}?v=${CACHE_VERSION}`);
 const channelKvKey = (id) => `channel:${id}`;
 
 /**
@@ -518,7 +557,9 @@ async function warmChannel(env, index = null) {
       fetchedAt: Date.now(),
       entries: entries.slice(0, CHANNEL_ENTRIES_KEPT),
     };
-    await env.DATA.put(channelKvKey(creator.id), JSON.stringify(payload), { expirationTtl: LAST_GOOD_TTL_SECONDS });
+    await env.DATA.put(channelKvKey(creator.id), JSON.stringify(payload), {
+      expirationTtl: LAST_GOOD_TTL_SECONDS,
+    });
     return { id: creator.id, entries: payload.entries.length };
   } catch (err) {
     return { id: creator.id, error: String(err?.message ?? err) };
@@ -553,7 +594,11 @@ async function handleCreatorChannel(request, env, ctx, id) {
     const base = creatorIndexEntry(creator);
     try {
       const entries = await creatorFeed(creator.channelId);
-      const payload = { ...base, fetchedAt: Date.now(), entries: entries.slice(0, CHANNEL_ENTRIES_KEPT) };
+      const payload = {
+        ...base,
+        fetchedAt: Date.now(),
+        entries: entries.slice(0, CHANNEL_ENTRIES_KEPT),
+      };
       ctx.waitUntil(
         caches.default.put(
           lastGoodKey(creator.id),
@@ -590,7 +635,11 @@ async function handleCreatorChannel(request, env, ctx, id) {
 /** Which creator channels this build knows about. */
 async function handleCreators(request, env, ctx) {
   return cached(request, ctx, CREATORS_INDEX_TTL_SECONDS, async () =>
-    json({ updatedAt: Date.now(), source: "YouTube RSS", creators: CREATORS.map(creatorIndexEntry) }),
+    json({
+      updatedAt: Date.now(),
+      source: "YouTube RSS",
+      creators: CREATORS.map(creatorIndexEntry),
+    }),
   );
 }
 
@@ -598,12 +647,14 @@ async function handleCreators(request, env, ctx) {
 export function classifyCreatorTitle(title) {
   const t = String(title ?? "").toLowerCase();
   if (/\blive\b/.test(t) || /stream ends/.test(t)) return { score: 0, kind: null };
-  if (/tier list/.test(t) && /rank(ing|s)? all|worst to best|pro tier/.test(t)) return { score: 100, kind: "tier list" };
+  if (/tier list/.test(t) && /rank(ing|s)? all|worst to best|pro tier/.test(t))
+    return { score: 100, kind: "tier list" };
   if (/pro tier list|best & worst/.test(t)) return { score: 95, kind: "tier list" };
   if (/tier list/.test(t)) return { score: 90, kind: "tier list" };
   if (/ranking all|ranks all/.test(t)) return { score: 85, kind: "tier list" };
   if (/explaining new meta|new meta/.test(t)) return { score: 70, kind: "meta" };
-  if (/top 10 best brawlers|best 15 brawlers|must max brawlers/.test(t)) return { score: 55, kind: "top picks" };
+  if (/top 10 best brawlers|best 15 brawlers|must max brawlers/.test(t))
+    return { score: 55, kind: "top picks" };
   return { score: 0, kind: null };
 }
 
@@ -642,7 +693,10 @@ export function parseCreatorFeed(xml) {
 
 async function creatorFeed(channelId, attempt = 0) {
   const res = await fetch(`https://www.youtube.com/feeds/videos.xml?channel_id=${channelId}`, {
-    headers: { accept: "application/atom+xml, application/xml, text/xml", "user-agent": "n3x-club-companion" },
+    headers: {
+      accept: "application/atom+xml, application/xml, text/xml",
+      "user-agent": "n3x-club-companion",
+    },
   });
   // YouTube throttles the shared edge addresses now and then; one short retry
   // keeps a rate-limited card from going empty for the rest of its cache window.
@@ -750,7 +804,234 @@ async function warmTierLists(env) {
   return results;
 }
 
+const BM_BASE = "https://brawlmetrics.gg";
+const MAP_STATS_TTL_SECONDS = 900;
+const BM_INDEX_TTL_SECONDS = 6 * 60 * 60;
+const BM_HEADERS = {
+  accept: "text/html",
+  "user-agent": "Mozilla/5.0 (compatible; n3x-club-companion)",
+};
 
+/** `Brawl Ball` → `brawl-ball`; diacritics and punctuation never reach a URL. */
+export function brawlMetricsSlug(value) {
+  return String(value ?? "")
+    .normalize("NFKD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .replace(/['’&]/g, "")
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+}
+
+/** Comparison key that ignores case, spaces and punctuation: `Belle's Rock` = `Belles Rock`. */
+export function looseKey(value) {
+  return String(value ?? "")
+    .toUpperCase()
+    .replace(/[^A-Z0-9]/g, "");
+}
+
+/**
+ * Every map the publisher lists, from its own index: the index is the only
+ * authority on slugs (`belles-rock` 404s, `acid-lakes` serves three Showdowns),
+ * so the Worker resolves names through it instead of guessing a URL.
+ */
+export function parseBrawlMetricsIndex(html) {
+  const out = new Map();
+  const re = /<a\b[^>]*href="\/maps\/([a-z0-9-]+)\/([a-z0-9-]+)"[^>]*>([\s\S]*?)<\/a>/gi;
+  for (const match of String(html ?? "").matchAll(re)) {
+    // A card carries its name in `map-card-name`; anything else falls back to its text.
+    const name = (
+      /class="map-card-name">([^<]+)</i.exec(match[3])?.[1] ??
+      match[3].replace(/<[^>]+>/g, " ").replace(/\s+/g, " ")
+    ).trim();
+    if (!name) continue;
+    out.set(`${match[1]}/${match[2]}`, { mode: match[1], map: match[2], name });
+  }
+  return [...out.values()];
+}
+
+/** A cell's text, tags and spacing gone. */
+function tagText(value) {
+  return String(value ?? "")
+    .replace(/<[^>]+>/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+/** `42,735` → 42735, `78.4%` → 78.4, anything else → null. */
+function cellNumber(value) {
+  if (value == null) return null;
+  const number = Number(String(value).replace(/[^\d.]/g, ""));
+  return Number.isFinite(number) ? number : null;
+}
+
+/**
+ * One map page: the publisher's sample size, its update stamp, its four buckets
+ * and its full table. Numbers are read, never derived.
+ *
+ * The publisher ranks by two different figures and the table says which one:
+ * an ordinary mode publishes a Win Rate, while Showdown, which has no win or
+ * loss, publishes a Top 4 Rate (with games and average rank instead of a use
+ * rate). The header is therefore read first — a placement table is never
+ * relabelled a win rate.
+ */
+export function parseBrawlMetricsMapPage(html) {
+  // React splits text nodes with `<!-- -->`, so `0.7<!-- -->%` is one number.
+  const source = String(html ?? "").replace(/<!-- -->/g, "");
+
+  const metric = (label) => {
+    const re = new RegExp(
+      `class="map-hero-metric-v">([^<]+)</span>[\\s\\S]{0,80}?class="map-hero-metric-k"[^>]*>${label}<`,
+      "i",
+    );
+    return re.exec(source)?.[1]?.trim() ?? null;
+  };
+  const battles = Number((metric("Total Battles") ?? "").replace(/[^\d]/g, ""));
+
+  const labels = [
+    ...(/<thead>[\s\S]*?<\/thead>/i.exec(source)?.[0] ?? "").matchAll(
+      /<th[^>]*>([\s\S]*?)<\/th>/gi,
+    ),
+  ].map((match) => tagText(match[1]).replace(/[▲▼]/g, "").trim());
+  const metricKind = labels.includes("Win Rate")
+    ? "winRate"
+    : labels.includes("Top 4 Rate")
+      ? "top4"
+      : null;
+
+  const rows = [];
+  const body = metricKind ? (/<tbody>([\s\S]*?)<\/tbody>/i.exec(source)?.[1] ?? "") : "";
+  for (const chunk of body.match(/<tr>[\s\S]*?<\/tr>/gi) ?? []) {
+    const cells = [...chunk.matchAll(/<td[^>]*>([\s\S]*?)<\/td>/gi)].map((match) =>
+      tagText(match[1]),
+    );
+    const cell = (label) => {
+      const at = labels.indexOf(label);
+      return at < 0 ? null : cells[at] || null;
+    };
+    const name = cell("Brawler");
+    const winRate = cellNumber(cell(metricKind === "top4" ? "Top 4 Rate" : "Win Rate"));
+    if (!name || winRate == null) continue;
+    rows.push({
+      name,
+      tier: cell("Tier") ?? "?",
+      role: cell("Class"),
+      winRate,
+      useRate: cellNumber(cell("Use Rate")),
+      games: cellNumber(cell("Games")),
+    });
+  }
+
+  const kinds = {
+    "best picks": "picks",
+    winners: "winners",
+    "most used": "mostUsed",
+    "not recommended": "notRecommended",
+  };
+  const buckets = [];
+  const bucketRe =
+    /<h3[^>]*>([^<]+)<\/h3>[\s\S]{0,600}?<div class="map-bucket-row">([\s\S]{0,6000}?)<\/div>/gi;
+  for (const match of source.matchAll(bucketRe)) {
+    const title = match[1].trim();
+    const items = [
+      ...match[2].matchAll(
+        /class="map-bucket-name">([^<]+)<[\s\S]{0,400}?class="map-bucket-wr">([\d.]+)%[\s\S]{0,200}?class="map-bucket-ur">([\d.]+)%/gi,
+      ),
+    ].map((x) => ({ name: x[1].trim(), winRate: Number(x[2]), useRate: Number(x[3]) }));
+    if (items.length) buckets.push({ kind: kinds[title.toLowerCase()] ?? "other", title, items });
+  }
+
+  return {
+    sampleBattles: Number.isFinite(battles) ? battles : 0,
+    updatedAt: metric("Last Updated"),
+    metric: metricKind,
+    rows,
+    buckets,
+  };
+}
+
+async function readBmIndex(env) {
+  const stored = await env.DATA.get("bm-index").catch(() => null);
+  if (stored) {
+    try {
+      const parsed = JSON.parse(stored);
+      if (parsed?.entries?.length && Date.now() - parsed.fetchedAt < BM_INDEX_TTL_SECONDS * 1000)
+        return parsed;
+    } catch {
+      /* corrupt store — refetch below */
+    }
+  }
+  const res = await fetch(`${BM_BASE}/maps`, { headers: BM_HEADERS });
+  if (!res.ok) throw new Error(`map index ${res.status}`);
+  const entries = parseBrawlMetricsIndex(await res.text());
+  if (entries.length < 20) throw new Error("map index did not parse");
+  const payload = { fetchedAt: Date.now(), entries };
+  await env.DATA.put("bm-index", JSON.stringify(payload), { expirationTtl: 7 * 24 * 60 * 60 });
+  return payload;
+}
+
+/** The publisher's entry for a map, preferring the mode it was asked about. */
+async function resolveMapEntry(env, map, mode) {
+  const guess = { mode: brawlMetricsSlug(mode), map: brawlMetricsSlug(map), name: map };
+  let index;
+  try {
+    index = await readBmIndex(env);
+  } catch {
+    return guess;
+  }
+  const wanted = looseKey(map);
+  const candidates = index.entries.filter((entry) => looseKey(entry.name) === wanted);
+  if (!candidates.length) return guess;
+  const wantedMode = brawlMetricsSlug(mode);
+  return candidates.find((entry) => entry.mode === wantedMode) ?? candidates[0];
+}
+
+/**
+ * One map's published numbers. The app cannot compute a global win rate from the
+ * official API, so this is the publisher's own count, with its sample size and
+ * its date, kept for a week so a throttled fetch still answers.
+ */
+async function handleMapStats(request, env, ctx) {
+  const url = new URL(request.url);
+  const map = String(url.searchParams.get("map") ?? "").trim();
+  const mode = String(url.searchParams.get("mode") ?? "").trim();
+  if (!map) return json({ error: "bad-request", message: "map is required" }, 400);
+  return cached(request, ctx, MAP_STATS_TTL_SECONDS, async () => {
+    const entry = await resolveMapEntry(env, map, mode);
+    const key = `mapstats:${entry.mode}/${entry.map}`;
+    const sourceUrl = `${BM_BASE}/maps/${entry.mode}/${entry.map}`;
+    try {
+      const res = await fetch(sourceUrl, { headers: BM_HEADERS });
+      if (!res.ok) throw new Error(`map page ${res.status}`);
+      const parsed = parseBrawlMetricsMapPage(await res.text());
+      if (parsed.rows.length < 5) throw new Error("map page did not parse");
+      const payload = {
+        map: entry.name,
+        mode: mode || null,
+        source: "BrawlMetrics",
+        sourceUrl,
+        fetchedAt: Date.now(),
+        ...parsed,
+      };
+      await env.DATA.put(key, JSON.stringify(payload), { expirationTtl: 7 * 24 * 60 * 60 });
+      return json(payload);
+    } catch (err) {
+      const message = String(err?.message ?? err);
+      const stored = await env.DATA.get(key).catch(() => null);
+      if (stored) {
+        try {
+          return json({ ...JSON.parse(stored), stale: true, error: message });
+        } catch {
+          /* corrupt store — fall through to the honest error */
+        }
+      }
+      return json(
+        { error: "map-stats-unavailable", message, map, mode: mode || null, rows: [], buckets: [] },
+        502,
+      );
+    }
+  });
+}
 
 async function handleMaps(request, env, ctx) {
   return cached(request, ctx, META_TTL_SECONDS, async () => {
@@ -768,11 +1049,18 @@ export default {
   async fetch(request, env, ctx) {
     const url = new URL(request.url);
     const path = url.pathname.replace(/\/+$/, "") || "/";
-    if (request.method === "OPTIONS") return new Response(null, { status: 204, headers: CORS_HEADERS });
+    if (request.method === "OPTIONS")
+      return new Response(null, { status: 204, headers: CORS_HEADERS });
     if (path === "/__warm") {
-      if (request.headers.get("x-register-key") !== env.REGISTER_KEY) return json({ error: "forbidden" }, 403);
+      if (request.headers.get("x-register-key") !== env.REGISTER_KEY)
+        return json({ error: "forbidden" }, 403);
       const index = Number(url.searchParams.get("index"));
-      return json(await warmChannel(env, Number.isInteger(index) && index >= 0 && index < CREATORS.length ? index : null));
+      return json(
+        await warmChannel(
+          env,
+          Number.isInteger(index) && index >= 0 && index < CREATORS.length ? index : null,
+        ),
+      );
     }
     if (limited(request.headers.get("cf-connecting-ip") ?? "unknown")) {
       return json({ error: "too many requests" }, 429);
@@ -795,6 +1083,7 @@ export default {
     if (path === "/ladder") return handleLadder(request, env, ctx);
     if (path === "/tier-list") return handleTierList(request, env, ctx);
     if (path === "/maps") return handleMaps(request, env, ctx);
+    if (path === "/map-stats") return handleMapStats(request, env, ctx);
 
     const battles = /^\/battles\/([0-9A-Za-z]{3,16})$/.exec(path);
     if (battles) return handleBattles(request, env, ctx, battles[1]);

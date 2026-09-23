@@ -35,7 +35,8 @@ export const STRINGS = {
     "common.reload": "Reload",
     "error.title": "Something went wrong",
     "error.oldBuild": "New version available",
-    "error.oldBuildBody": "This copy of the app was older than the one on the server, so it is reloading onto the current build.",
+    "error.oldBuildBody":
+      "This copy of the app was older than the one on the server, so it is reloading onto the current build.",
 
     "role.president": "President",
     "role.vicePresident": "Vice President",
@@ -53,13 +54,14 @@ export const STRINGS = {
     "state.maps.title": "Rotation unavailable",
     "state.maps.body": "Could not load the map rotation.",
     "state.map.title": "Map unavailable",
-    "state.map.body": "Could not read the club's battle logs.",
+    "state.map.body": "Could not read this map's numbers.",
     "state.player.title": "Player unavailable",
     "state.player.body": "Could not load this profile.",
 
     "club.members": "Members",
     "club.ranked": "Ranked",
-    "club.rankedHint": "Sorted by Ranked Elo. The tier and Elo come from each member's own profile.",
+    "club.rankedHint":
+      "Sorted by Ranked Elo. The tier and Elo come from each member's own profile.",
     "club.rankedNone": "no Ranked standing",
     "club.rankedLoading": "reading profiles…",
     "club.trophies": "Trophies",
@@ -161,15 +163,30 @@ export const STRINGS = {
 
     "map.title": "Map",
     "map.notLive": "Not in the live rotation",
-    "map.club": "Our club on this map",
+    "map.global": "Global numbers",
     "map.brawlers": "Best brawlers here",
-    "map.recent": "Recent battles on this map",
+    "map.useRate": "Use rate",
+    "map.games": "Games",
+    "map.top4Rate": "Top 4 rate",
+    "map.ranksByWinRate": "ranked by win rate",
+    "map.ranksByTop4": "ranked by top-4 rate",
+    "map.clubBattles": "Our club's battles here",
+    "map.sample": "{n} battles counted by {source}",
+    "map.sampleBy": "{source} counted these battles",
+    "map.published": "Published {when}",
+    "map.noSplit": "The publisher has one population — it does not split by trophy range.",
+    "map.tierNote":
+      "The letters group brawlers by the publisher's overall tier list; inside a group the order is this map's own ranking.",
+    "map.picture.close": "Close map picture",
+    "map.details": "Everything about this map",
     "map.empty.title": "No battles on this map",
     "map.empty.body": "The members' own logs hold no competitive battle on this map right now.",
     "map.unpublished":
       "Left out of these numbers: {n} competitive games on this map published no win or loss — the Showdown modes do not report one.",
     "map.note":
-      "Counting this club's own competitive battles only — friendlies and event modes stay out, and no global win rate is invented for a map. The official log keeps about the last 25 games per player, so a map the club has not played lately can be missing or thin. A row with fewer than {low} picks is a small sample, not a ranking.",
+      "The numbers above come from {source} and count every battle it recorded on this map — not this club's games, and not split by trophy range. The list below is our club's own battles from the members' logs, which the official API keeps about 25 games per player.",
+    "map.noteClub":
+      "The list below is our club's own battles from the members' logs, which the official API keeps about 25 games per player.",
 
     "member.title": "Member",
     "member.roster": "Roster",
@@ -216,7 +233,8 @@ export const STRINGS = {
     "settings.importOk": "Imported {count} keys.",
     "settings.importFailed": "That file is not an {app} export: {reason}",
     "settings.reset": "Reset the app",
-    "settings.resetHint": "Forgets every saved choice and cached reading on this device, then reloads.",
+    "settings.resetHint":
+      "Forgets every saved choice and cached reading on this device, then reloads.",
     "settings.resetConfirm": "Tap again to confirm",
 
     "about.title": "Data",
@@ -242,7 +260,8 @@ export const STRINGS = {
     "common.reload": "Odśwież",
     "error.title": "Coś się nie udało",
     "error.oldBuild": "Jest nowsza wersja",
-    "error.oldBuildBody": "Ta kopia aplikacji była starsza niż ta na serwerze, więc przeładowuję się na aktualną wersję.",
+    "error.oldBuildBody":
+      "Ta kopia aplikacji była starsza niż ta na serwerze, więc przeładowuję się na aktualną wersję.",
 
     "role.president": "Dowódca",
     "role.vicePresident": "Z-ca dowódcy",
@@ -260,7 +279,7 @@ export const STRINGS = {
     "state.maps.title": "Rotacja niedostępna",
     "state.maps.body": "Nie udało się pobrać rotacji map.",
     "state.map.title": "Mapa niedostępna",
-    "state.map.body": "Nie udało się odczytać dzienników bitew klubu.",
+    "state.map.body": "Nie udało się odczytać liczb tej mapy.",
     "state.player.title": "Gracz niedostępny",
     "state.player.body": "Nie udało się pobrać tego profilu.",
 
@@ -275,7 +294,8 @@ export const STRINGS = {
     "club.noMatch.title": "Brak wyników",
     "club.noMatch.body": "Wyczyść wyszukiwanie, aby zobaczyć cały skład.",
     "club.activity": "Wejścia i wyjścia",
-    "club.activity.baseline": "Zapisano stan składu. Następne dołączenie lub odejście pojawi się tutaj.",
+    "club.activity.baseline":
+      "Zapisano stan składu. Następne dołączenie lub odejście pojawi się tutaj.",
     "club.activity.none": "Brak wejść i wyjść od rozpoczęcia śledzenia.",
     "club.activity.unsaved": "Skład na żywo działa. Tym razem nie udało się zapisać dziennika.",
     "club.event.joinLine": "{name} dołączył jako {role}",
@@ -368,15 +388,30 @@ export const STRINGS = {
 
     "map.title": "Mapa",
     "map.notLive": "Brak w bieżącej rotacji",
-    "map.club": "Nasz klub na tej mapie",
+    "map.global": "Liczby globalne",
     "map.brawlers": "Najlepsi zadymiarze na tej mapie",
-    "map.recent": "Ostatnie bitwy na tej mapie",
+    "map.useRate": "Użycie",
+    "map.games": "Gry",
+    "map.top4Rate": "Top 4",
+    "map.ranksByWinRate": "ranking według win rate",
+    "map.ranksByTop4": "ranking według top 4",
+    "map.clubBattles": "Bitwy naszego klubu tutaj",
+    "map.sample": "{n} bitew policzonych przez {source}",
+    "map.sampleBy": "{source} policzył te bitwy",
+    "map.published": "Opublikowane {when}",
+    "map.noSplit": "Wydawca ma jedną populację — nie dzieli jej po pucharach.",
+    "map.tierNote":
+      "Litery grupują zadymiarzy według ogólnej tier listy wydawcy; w grupie kolejność to ranking tej mapy.",
+    "map.picture.close": "Zamknij zdjęcie mapy",
+    "map.details": "Wszystko o tej mapie",
     "map.empty.title": "Brak bitew na tej mapie",
     "map.empty.body": "Dzienniki członków nie mają teraz żadnej bitwy rankingowej na tej mapie.",
     "map.unpublished":
       "Poza tymi liczbami: {n} gier rankingowych na tej mapie nie ma opublikowanej wygranej ani porażki — tryby Starcie ich nie podają.",
     "map.note":
-      "Liczymy tylko własne bitwy rankingowe tego klubu — towarzyskie i tryby wydarzeń zostają poza, a globalny win rate dla mapy nie jest zmyślany. Oficjalny dziennik trzyma około 25 ostatnich gier na gracza, więc mapa, na której klub ostatnio nie grał, może być nieobecna lub cienka. Wiersz z mniej niż {low} wyborami to mała próba, nie ranking.",
+      "Liczby powyżej pochodzą z {source} i liczą wszystkie bitwy zarejestrowane na tej mapie — to nie są gry naszego klubu i nie są dzielone po pucharach. Lista poniżej to bitwy naszego klubu z dzienników członków, a oficjalny dziennik trzyma około 25 gier na gracza.",
+    "map.noteClub":
+      "Lista poniżej to bitwy naszego klubu z dzienników członków, a oficjalny dziennik trzyma około 25 gier na gracza.",
 
     "member.title": "Gracz",
     "member.roster": "Skład",
@@ -416,14 +451,16 @@ export const STRINGS = {
     "settings.storage": "{count} kluczy · {size}",
     "settings.storageEmpty": "Nic jeszcze nie zapisano na tym urządzeniu.",
     "settings.export": "Eksportuj wszystko",
-    "settings.exportHint": "Pobiera jeden plik JSON: każdy zapisany wybór i odczyt z pamięci podręcznej.",
+    "settings.exportHint":
+      "Pobiera jeden plik JSON: każdy zapisany wybór i odczyt z pamięci podręcznej.",
     "settings.exportDone": "Wyeksportowano {count} kluczy.",
     "settings.import": "Importuj",
     "settings.importHint": "Czyta plik wyeksportowany z tego ekranu i zastępuje zapisane dane.",
     "settings.importOk": "Zaimportowano {count} kluczy.",
     "settings.importFailed": "To nie jest eksport aplikacji {app}: {reason}",
     "settings.reset": "Zresetuj aplikację",
-    "settings.resetHint": "Zapomina każdy zapisany wybór i odczyt z pamięci podręcznej, potem przeładowuje.",
+    "settings.resetHint":
+      "Zapomina każdy zapisany wybór i odczyt z pamięci podręcznej, potem przeładowuje.",
     "settings.resetConfirm": "Stuknij ponownie, aby potwierdzić",
 
     "about.title": "Dane",

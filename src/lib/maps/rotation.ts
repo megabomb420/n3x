@@ -7,8 +7,8 @@
  * `maps.ends` / `maps.starts` / `maps.timeUnknown` — so a Polish interface does
  * not fall back to an English sentence the way the screen-local copy did.
  */
-import { apiGet } from "@/lib/api/client";
-import { formatRelative } from "@/lib/meta/format";
+import { apiGet } from "../api/client.ts";
+import { formatRelative } from "../meta/format.ts";
 import type { StringKey } from "@/lib/i18n/provider";
 
 export interface RotationEvent {
@@ -31,6 +31,25 @@ export function loadRotation(): Promise<RotationPayload> {
   return apiGet<RotationPayload>("/maps");
 }
 
+export interface MapEventStatus {
+  event: RotationEvent;
+  live: boolean;
+}
+
+/**
+ * The event a map is on right now, or the next one — and which of the two it is.
+ * `active` and `upcoming` both carry maps, so the payload alone cannot say.
+ */
+export function findMapEvent(
+  rotation: RotationPayload | undefined,
+  map: string,
+): MapEventStatus | null {
+  const active = rotation?.active.find((event) => event.map === map);
+  if (active) return { event: active, live: true };
+  const upcoming = rotation?.upcoming.find((event) => event.map === map);
+  return upcoming ? { event: upcoming, live: false } : null;
+}
+
 /** `useT()`, so the shared text follows the interface language. */
 type Translate = (key: StringKey, params?: Record<string, string | number>) => string;
 
@@ -42,7 +61,9 @@ export function toMs(value: string | null): number | null {
   if (!value) return null;
   const compact = /^(\d{4})(\d{2})(\d{2})T(\d{2})(\d{2})(\d{2})/.exec(value);
   const ms = compact
-    ? Date.parse(`${compact[1]}-${compact[2]}-${compact[3]}T${compact[4]}:${compact[5]}:${compact[6]}Z`)
+    ? Date.parse(
+        `${compact[1]}-${compact[2]}-${compact[3]}T${compact[4]}:${compact[5]}:${compact[6]}Z`,
+      )
     : Date.parse(value);
   return Number.isFinite(ms) ? ms : null;
 }
@@ -71,7 +92,10 @@ export function formatWindow(
     if (new Date(start).toDateString() === new Date(end).toDateString()) {
       return `${clock(start)} – ${clock(end)}`;
     }
-    const startDay = new Date(start).toLocaleDateString("en-GB", { day: "numeric", month: "short" });
+    const startDay = new Date(start).toLocaleDateString("en-GB", {
+      day: "numeric",
+      month: "short",
+    });
     const endDay = new Date(end).toLocaleDateString("en-GB", { day: "numeric", month: "short" });
     return `${startDay} ${clock(start)} – ${endDay} ${clock(end)}`;
   }

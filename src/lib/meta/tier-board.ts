@@ -8,6 +8,8 @@ export interface TierRow {
   role: string | null;
   winRate: number;
   useRate: number | null;
+  /** Games the figure rests on, when the publisher's table carries one. */
+  games?: number | null;
 }
 
 export function groupTiers(rows: TierRow[]): Array<{ tier: string; rows: TierRow[] }> {

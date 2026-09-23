@@ -1,44 +1,35 @@
 /**
- * One map: its art, whether it is in the live rotation, and what this club has
- * actually done on it.
+ * One map: its picture, whether it is in the live rotation, the publisher's
+ * global numbers for it, and what this club has actually done on it.
  *
- * Every number here is the members' own battle logs — the official API publishes
- * no global win or pick rates, and the sites that do publish them (Brawl Time
- * Ninja, Brawlify) cannot be read from a hosted app — so each row carries its
- * own sample size instead of looking like a global ranking.
+ * The official API publishes no global win or pick rates at all, so the global
+ * block is the publisher's own reading — one population, no trophy split — and
+ * says so. The club block below it is facts from the members' own logs.
  */
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
 import { ChevronLeft } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
-import { QUEUE_PREF_KEY, isQueue } from "@/lib/club/queue";
-import {
-  LOW_SAMPLE,
-  aggregateBattles,
-  battlesOnMap,
-  battlesWithoutResult,
-  inQueue,
-  loadClubLogs,
-  type MetaQueue,
-} from "@/lib/club/stats-loader";
+import { useMemo, useState } from "react";
+import { battlesOnMap, battlesWithoutResult, loadClubLogs } from "@/lib/club/stats-loader";
 import { useT } from "@/lib/i18n/provider";
-import { formatWindow, loadRotation } from "@/lib/maps/rotation";
-import { findMap, loadCatalog } from "@/lib/meta/brawlapi";
-import { formatRelative } from "@/lib/meta/format";
+import { loadMapStats } from "@/lib/maps/map-stats";
+import { findMapEvent, formatWindow, loadRotation } from "@/lib/maps/rotation";
+import { findBrawler, findMap, loadCatalog } from "@/lib/meta/brawlapi";
+import { formatPicks, formatRelative } from "@/lib/meta/format";
 import { displayBrawlerName, titleCaseMode } from "@/lib/meta/names";
-import { readPref, writePref } from "@/lib/prefs";
+import { groupTiers } from "@/lib/meta/tier-board";
 import { useOnline } from "@/hooks/use-online";
 import { cn } from "@/lib/utils";
-import { MapArt } from "./portrait";
-import { BrawlerRow, Breakdown, QUEUES, Stat, pct } from "./stat-rows";
+import { MapArt } from "./map-art";
+import { MapPicture } from "./map-picture";
+import { Portrait } from "./portrait";
+import { RateBar } from "./stat-rows";
 import { EmptyState, ErrorState, OfflineBanner, SkeletonRows } from "./state-views";
-import { TabButtons } from "./tab-buttons";
 
 export function MapScreen({ map }: { map: string }) {
   const t = useT();
   const online = useOnline();
-  const [queue, setQueue] = useState<MetaQueue>("all");
-  const [prefsReady, setPrefsReady] = useState(false);
+  const [picture, setPicture] = useState(false);
 
   const logs = useQuery({
     queryKey: ["club-logs"],
@@ -47,33 +38,18 @@ export function MapScreen({ map }: { map: string }) {
   });
   const rotation = useQuery({ queryKey: ["rotation"], queryFn: loadRotation });
   const catalog = useQuery({ queryKey: ["catalog"], queryFn: loadCatalog }).data ?? null;
-
-  useEffect(() => {
-    const saved = readPref(QUEUE_PREF_KEY);
-    const next = isQueue(saved) ? saved : "all";
-    writePref(QUEUE_PREF_KEY, next);
-    setQueue(next);
-    setPrefsReady(true);
-  }, []);
+  const status = useMemo(() => findMapEvent(rotation.data, map), [rotation.data, map]);
+  const art = catalog ? findMap(catalog, map, status?.event.mode) : null;
+  const stats = useQuery({
+    queryKey: ["map-stats", map, art?.modeName ?? null],
+    queryFn: () => loadMapStats(map, art?.modeName ?? null),
+  });
+  const global = stats.data;
 
   const bundle = logs.data;
-  const live = useMemo(() => {
-    const events = [...(rotation.data?.active ?? []), ...(rotation.data?.upcoming ?? [])];
-    return events.find((event) => event.map === map) ?? null;
-  }, [rotation.data, map]);
-
-  const meta = useMemo(
-    () => (bundle && prefsReady ? aggregateBattles(bundle.logs, queue, { map }) : null),
-    [bundle, prefsReady, queue, map],
-  );
   const recent = useMemo(
-    () =>
-      bundle
-        ? battlesOnMap(bundle.logs, map, 30)
-            .filter(({ battle }) => inQueue(battle, queue))
-            .slice(0, 12)
-        : [],
-    [bundle, map, queue],
+    () => (bundle ? battlesOnMap(bundle.logs, map, 30).slice(0, 12) : []),
+    [bundle, map],
   );
   const names = useMemo(
     () => new Map((bundle?.members ?? []).map((entry) => [entry.tag, entry.name])),
@@ -84,12 +60,7 @@ export function MapScreen({ map }: { map: string }) {
     [bundle, map],
   );
 
-  function chooseQueue(next: MetaQueue) {
-    setQueue(next);
-    writePref(QUEUE_PREF_KEY, next);
-  }
-
-  if (logs.isLoading || !prefsReady) {
+  if (logs.isLoading) {
     return (
       <div className="px-3">
         <SkeletonRows count={8} />
@@ -107,13 +78,13 @@ export function MapScreen({ map }: { map: string }) {
       </div>
     );
   }
-  if (!bundle || !meta) return null;
+  if (!bundle) return null;
 
-  const art = catalog ? findMap(catalog, map, live?.mode) : null;
-  const days =
-    meta.windowStart == null
-      ? null
-      : Math.max(1, Math.round((Date.now() - Date.parse(meta.windowStart)) / 86_400_000));
+  // What the publisher's column is called: Showdown ranks by placement, so its
+  // figure is never shown under a win-rate label.
+  const top4 = global?.metric === "top4";
+  const metricLabel = top4 ? t("map.top4Rate") : t("stats.winRate");
+  const secondaryLabel = top4 ? t("map.games") : t("map.useRate");
 
   return (
     <div className="flex flex-col gap-3 px-3">
@@ -123,124 +94,174 @@ export function MapScreen({ map }: { map: string }) {
 
       {!online ? <OfflineBanner stale /> : null}
 
-      <section className="overflow-hidden rounded-2xl bg-surface shadow-[var(--shadow-border)]">
-        <div className="relative aspect-[2/1] bg-surface-2">
-          <MapArt src={art?.imageUrl ?? null} alt={map} className="h-full w-full" />
-          {live ? (
-            <span className="absolute right-2 top-2 rounded-full bg-win px-2 py-0.5 text-[10px] font-medium text-bg">
-              {t("maps.active")}
-            </span>
-          ) : null}
-        </div>
-        <div className="px-3 py-2.5">
-          <h2 className="font-display text-2xl leading-none tracking-wide">{map}</h2>
-          <p className="mt-1 text-xs text-muted">
-            {live
-              ? `${live.mode ? titleCaseMode(live.mode) : t("maps.modeUnknown")} · ${formatWindow(live.startTime, live.endTime, t)}`
-              : t("map.notLive")}
-          </p>
-        </div>
-      </section>
-
-      <TabButtons
-        label={t("map.club")}
-        value={queue}
-        onChange={chooseQueue}
-        options={QUEUES.map((entry) => ({ id: entry.id, label: t(entry.label), hint: meta.totals[entry.id] }))}
-      />
-
-      <section className="rounded-2xl bg-surface p-4">
-        <div className="flex items-start justify-between gap-3">
-          <div className="min-w-0">
-            <p className="text-xs uppercase tracking-wider text-subtle">{t("map.club")}</p>
-            <p className="truncate font-display text-3xl leading-none tracking-wide">
-              {meta.battles.toLocaleString("en-GB")}
-            </p>
-            <p className="mt-1 truncate text-xs text-muted">{t("stats.battles")}</p>
+      <section className="rounded-2xl bg-surface shadow-[var(--shadow-border)]">
+        <button
+          type="button"
+          onClick={() => setPicture(true)}
+          className="block w-full overflow-hidden rounded-2xl text-left"
+        >
+          <div className="relative flex aspect-[4/5] items-center justify-center bg-surface-2">
+            <MapArt
+              mapArt={art?.imageUrl ?? null}
+              modeArt={art?.modeImage ?? null}
+              alt={map}
+              fit="contain"
+              className="bleed h-full w-full"
+            />
+            {status?.live ? (
+              <span className="absolute right-2 top-2 rounded-full bg-win px-2 py-0.5 text-[10px] font-medium text-bg">
+                {t("maps.active")}
+              </span>
+            ) : null}
           </div>
-          <div className="text-right">
-            <p className="text-xs uppercase tracking-wider text-subtle">{t("stats.winRate")}</p>
-            <p
-              className={cn(
-                "font-display text-3xl leading-none tracking-wide",
-                meta.winRate >= 0.5 ? "text-win" : "text-fg",
-              )}
-            >
-              {pct(meta.winRate)}
+          <div className="px-3 py-2.5">
+            <h2 className="font-display text-2xl leading-none tracking-wide">{map}</h2>
+            <p className="mt-1 text-xs text-muted">
+              {status
+                ? `${status.event.mode ? titleCaseMode(status.event.mode) : t("maps.modeUnknown")} · ${formatWindow(status.event.startTime, status.event.endTime, t)}`
+                : t("map.notLive")}
             </p>
           </div>
-        </div>
-        <dl className="mt-3 grid grid-cols-3 gap-2 text-center">
-          <Stat label={t("stats.wins")} value={meta.wins.toLocaleString("en-GB")} />
-          <Stat label={t("club.members")} value={String(meta.members)} />
-          <Stat label={t("stats.window")} value={days == null ? "—" : `${days}d`} />
-        </dl>
-        <p className="mt-3 text-[11px] text-subtle">
-          {t(`stats.queue.${queue}` as const)}
-          {meta.windowStart && meta.windowEnd
-            ? ` · ${new Date(meta.windowStart).toLocaleDateString("en-GB")} → ${new Date(meta.windowEnd).toLocaleDateString("en-GB")}`
-            : ""}
-          {" · "}
-          {t("common.updated", { when: formatRelative(bundle.fetchedAt) })}
-        </p>
-        {unpublished > 0 ? (
-          <p className="mt-1 text-[11px] text-low">{t("map.unpublished", { n: unpublished })}</p>
-        ) : null}
+        </button>
       </section>
 
-      {meta.battles === 0 ? (
+      {stats.isError && !global ? (
+        <ErrorState
+          title={t("state.map.title")}
+          body={stats.error instanceof Error ? stats.error.message : t("state.map.body")}
+          onRetry={() => void stats.refetch()}
+        />
+      ) : null}
+      {stats.isLoading ? <SkeletonRows count={6} /> : null}
+
+      {global && global.rows.length > 0 ? (
+        <>
+          <section className="rounded-2xl bg-surface p-4">
+            <p className="text-xs uppercase tracking-wider text-subtle">{t("map.global")}</p>
+            <p className="mt-1 font-display text-3xl leading-none tracking-wide">
+              {formatPicks(global.sampleBattles)}
+            </p>
+            <p className="mt-1 text-xs text-muted">
+              {t("map.sampleBy", { source: global.source })}
+            </p>
+            <p className="mt-2 text-[11px] text-subtle">
+              {global.updatedAt ? t("map.published", { when: global.updatedAt }) : ""}
+              {global.stale ? ` · ${t("meta.noteStale")}` : ""}
+            </p>
+            <p className="mt-2 text-[11px] text-low">{t("map.noSplit")}</p>
+            <p className="mt-2 text-[11px] text-subtle">{t("map.tierNote")}</p>
+          </section>
+
+          {groupTiers(global.rows).map((group) => (
+            <section key={group.tier}>
+              <h2 className="mb-1.5 flex items-baseline gap-2 font-display text-lg tracking-wide">
+                {group.tier}
+                <span className="text-xs text-subtle">{group.rows.length}</span>
+              </h2>
+              <ul className="flex flex-col gap-1.5">
+                {group.rows.map((row) => (
+                  <li
+                    key={row.name}
+                    className="flex items-center gap-2.5 rounded-xl bg-surface px-3 py-2"
+                  >
+                    <Portrait
+                      catalog={findBrawler(catalog, row.name.toUpperCase())}
+                      cubeName={row.name.toUpperCase()}
+                      size={32}
+                      decorative
+                    />
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate text-sm text-fg">
+                        {displayBrawlerName(row.name.toUpperCase())}
+                      </p>
+                      <p className="truncate text-[10px] text-subtle">{row.role ?? ""}</p>
+                    </div>
+                    <RateBar rate={row.winRate / 100} className="w-16 shrink-0" />
+                    <div className="w-14 shrink-0 text-right">
+                      <p className="text-sm text-fg">{Math.round(row.winRate)}%</p>
+                      <p className="text-[10px] text-subtle">{metricLabel}</p>
+                    </div>
+                    <div className="w-14 shrink-0 text-right">
+                      <p className="text-xs text-muted">
+                        {row.useRate == null
+                          ? row.games == null
+                            ? "—"
+                            : formatPicks(row.games)
+                          : `${row.useRate}%`}
+                      </p>
+                      <p className="text-[10px] text-subtle">{secondaryLabel}</p>
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            </section>
+          ))}
+        </>
+      ) : null}
+
+      {recent.length === 0 ? (
         <EmptyState title={t("map.empty.title")} body={t("map.empty.body")} />
       ) : (
-        <>
-          <section>
-            <h2 className="mb-1.5 font-display text-lg tracking-wide">{t("map.brawlers")}</h2>
-            <ul className="flex flex-col gap-1.5">
-              {meta.brawlers.map((row) => (
-                <BrawlerRow key={row.name} row={row} queue={queue} catalog={catalog} />
-              ))}
-            </ul>
-          </section>
-
-          <Breakdown title={t("stats.modes")} rows={meta.modes} label={titleCaseMode} />
-
-          <section>
-            <h2 className="mb-1.5 font-display text-lg tracking-wide">{t("map.recent")}</h2>
-            <ul className="flex flex-col gap-1.5">
-              {recent.map(({ tag, battle }, i) => (
-                <li key={`${tag}-${battle.timestamp}-${i}`} className="rounded-xl bg-surface px-3 py-2.5">
-                  <div className="flex items-center justify-between gap-2">
-                    <p
-                      className={cn(
-                        "text-sm font-medium",
-                        battle.victory === true ? "text-win" : battle.victory === false ? "text-danger" : "text-fg",
-                      )}
-                    >
-                      {battle.result ||
-                        (battle.victory === true
-                          ? t("member.victory")
-                          : battle.victory === false
-                            ? t("member.defeat")
-                            : t("member.battle"))}
-                    </p>
-                    <p className="text-xs text-subtle">{formatRelative(battle.timestamp)}</p>
-                  </div>
-                  <p className="mt-0.5 text-xs text-muted">
-                    {names.get(tag) ?? `#${tag}`}
-                    {battle.mode ? ` · ${titleCaseMode(battle.mode)}` : ""}
-                    {battle.brawler ? ` · ${displayBrawlerName(battle.brawler)}` : ""}
-                    {battle.ranked ? ` · ${t("stats.queue.ranked")}` : ""}
-                    {battle.trophyChange != null
-                      ? ` · ${battle.trophyChange > 0 ? "+" : ""}${battle.trophyChange}${battle.ranked ? " ELO" : ""}`
-                      : ""}
+        <section>
+          <h2 className="mb-1.5 font-display text-lg tracking-wide">{t("map.clubBattles")}</h2>
+          <ul className="flex flex-col gap-1.5">
+            {recent.map(({ tag, battle }, i) => (
+              <li
+                key={`${tag}-${battle.timestamp}-${i}`}
+                className="rounded-xl bg-surface px-3 py-2.5"
+              >
+                <div className="flex items-center justify-between gap-2">
+                  <p
+                    className={cn(
+                      "text-sm font-medium",
+                      battle.victory === true
+                        ? "text-win"
+                        : battle.victory === false
+                          ? "text-danger"
+                          : "text-fg",
+                    )}
+                  >
+                    {battle.result ||
+                      (battle.victory === true
+                        ? t("member.victory")
+                        : battle.victory === false
+                          ? t("member.defeat")
+                          : t("member.battle"))}
                   </p>
-                </li>
-              ))}
-            </ul>
-          </section>
-        </>
+                  <p className="text-xs text-subtle">{formatRelative(battle.timestamp)}</p>
+                </div>
+                <p className="mt-0.5 text-xs text-muted">
+                  {names.get(tag) ?? `#${tag}`}
+                  {battle.mode ? ` · ${titleCaseMode(battle.mode)}` : ""}
+                  {battle.brawler ? ` · ${displayBrawlerName(battle.brawler)}` : ""}
+                  {battle.ranked ? ` · ${t("stats.queue.ranked")}` : ""}
+                  {battle.trophyChange != null
+                    ? ` · ${battle.trophyChange > 0 ? "+" : ""}${battle.trophyChange}${battle.ranked ? " ELO" : ""}`
+                    : ""}
+                </p>
+              </li>
+            ))}
+          </ul>
+        </section>
       )}
 
-      <p className="pb-2 text-[11px] leading-relaxed text-subtle">{t("map.note", { low: LOW_SAMPLE })}</p>
+      {unpublished > 0 ? (
+        <p className="text-[11px] text-low">{t("map.unpublished", { n: unpublished })}</p>
+      ) : null}
+
+      <p className="pb-2 text-[11px] leading-relaxed text-subtle">
+        {global?.source ? t("map.note", { source: global.source }) : t("map.noteClub")}
+      </p>
+
+      {picture ? (
+        <MapPicture
+          map={map}
+          art={art}
+          event={status?.event ?? null}
+          live={Boolean(status?.live)}
+          onClose={() => setPicture(false)}
+        />
+      ) : null}
     </div>
   );
 }

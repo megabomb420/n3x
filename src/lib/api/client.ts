@@ -37,6 +37,7 @@ function messageFor(status: number, code: string, reason: string): string {
   }
   if (code === "upstream-unreachable") return "The data source did not answer";
   if (code === "tier-list-unavailable") return "The tier list source did not answer";
+  if (code === "map-stats-unavailable") return "The map numbers source did not answer";
   if (status === 404) return "Not found";
   return `Data source unavailable (${status}${reason ? ` ${reason}` : ""})`;
 }

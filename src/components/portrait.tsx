@@ -40,33 +40,3 @@ export function Portrait({
     />
   );
 }
-
-export function MapArt({
-  src,
-  alt,
-  className,
-}: {
-  src: string | null;
-  alt: string;
-  className?: string;
-}) {
-  if (!src) {
-    return (
-      <div
-        className={cn("flex items-center justify-center bg-surface-2 text-subtle", className)}
-        aria-hidden
-      >
-        <span className="font-display text-2xl tracking-wide">{alt.slice(0, 1)}</span>
-      </div>
-    );
-  }
-  return (
-    <img
-      src={src}
-      alt={alt}
-      loading="lazy"
-      decoding="async"
-      className={cn("bg-surface-2 object-cover object-top", className)}
-    />
-  );
-}
