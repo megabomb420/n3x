@@ -11,7 +11,15 @@ import { cacheGet, cacheSet } from "@/lib/meta/cache";
 import { loadClubHome, loadClubPlayer } from "./queries";
 import type { PlayerBattle } from "./types";
 
-export { LOW_SAMPLE, STATS_RANGES, aggregateBattles, rangeStart } from "./stats";
+export {
+  LOW_SAMPLE,
+  STATS_RANGES,
+  aggregateBattles,
+  battlesOnMap,
+  battlesWithoutResult,
+  inQueue,
+  rangeStart,
+} from "./stats";
 export type { ClubMeta, MetaQueue, MetaRow, StatsRange } from "./stats";
 
 const LOG_TTL_MS = 5 * 60_000;

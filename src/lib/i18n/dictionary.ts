@@ -52,6 +52,8 @@ export const STRINGS = {
     "state.ladder.body": "Could not load the leaderboard.",
     "state.maps.title": "Rotation unavailable",
     "state.maps.body": "Could not load the map rotation.",
+    "state.map.title": "Map unavailable",
+    "state.map.body": "Could not read the club's battle logs.",
     "state.player.title": "Player unavailable",
     "state.player.body": "Could not load this profile.",
 
@@ -157,6 +159,19 @@ export const STRINGS = {
     "maps.starts": "Starts {when}",
     "maps.note": "Updated {when} · live rotation",
 
+    "map.title": "Map",
+    "map.notLive": "Not in the live rotation",
+    "map.club": "Our club on this map",
+    "map.brawlers": "Best brawlers here",
+    "map.recent": "Recent battles on this map",
+    "map.empty.title": "No battles on this map",
+    "map.empty.body": "The members' own logs hold no competitive battle on this map right now.",
+    "map.unpublished":
+      "Left out of these numbers: {n} competitive games on this map published no win or loss — the Showdown modes do not report one.",
+    "map.note":
+      "Counting this club's own competitive battles only — friendlies and event modes stay out, and no global win rate is invented for a map. The official log keeps about the last 25 games per player, so a map the club has not played lately can be missing or thin. A row with fewer than {low} picks is a small sample, not a ranking.",
+
+    "member.title": "Member",
     "member.roster": "Roster",
     "member.trophies": "Trophies",
     "member.peak": "Peak",
@@ -244,6 +259,8 @@ export const STRINGS = {
     "state.ladder.body": "Nie udało się pobrać tabeli wyników.",
     "state.maps.title": "Rotacja niedostępna",
     "state.maps.body": "Nie udało się pobrać rotacji map.",
+    "state.map.title": "Mapa niedostępna",
+    "state.map.body": "Nie udało się odczytać dzienników bitew klubu.",
     "state.player.title": "Gracz niedostępny",
     "state.player.body": "Nie udało się pobrać tego profilu.",
 
@@ -349,6 +366,19 @@ export const STRINGS = {
     "maps.starts": "Początek {when}",
     "maps.note": "Zaktualizowano {when} · rotacja na żywo",
 
+    "map.title": "Mapa",
+    "map.notLive": "Brak w bieżącej rotacji",
+    "map.club": "Nasz klub na tej mapie",
+    "map.brawlers": "Najlepsi zadymiarze na tej mapie",
+    "map.recent": "Ostatnie bitwy na tej mapie",
+    "map.empty.title": "Brak bitew na tej mapie",
+    "map.empty.body": "Dzienniki członków nie mają teraz żadnej bitwy rankingowej na tej mapie.",
+    "map.unpublished":
+      "Poza tymi liczbami: {n} gier rankingowych na tej mapie nie ma opublikowanej wygranej ani porażki — tryby Starcie ich nie podają.",
+    "map.note":
+      "Liczymy tylko własne bitwy rankingowe tego klubu — towarzyskie i tryby wydarzeń zostają poza, a globalny win rate dla mapy nie jest zmyślany. Oficjalny dziennik trzyma około 25 ostatnich gier na gracza, więc mapa, na której klub ostatnio nie grał, może być nieobecna lub cienka. Wiersz z mniej niż {low} wyborami to mała próba, nie ranking.",
+
+    "member.title": "Gracz",
     "member.roster": "Skład",
     "member.trophies": "Puchary",
     "member.peak": "Rekord",

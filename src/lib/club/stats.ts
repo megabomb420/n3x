@@ -56,10 +56,21 @@ export interface ClubMeta {
   maps: MetaRow[];
 }
 
-/** Optional narrowing. Omitted fields mean the whole club and the whole log. */
+/**
+ * Optional narrowing. Omitted fields mean the whole club, the whole log and
+ * every map on it.
+ */
 export interface StatsScope {
   tag?: string | null;
+  /** One map's battles only — what a map's own screen shows. */
+  map?: string | null;
   sinceMs?: number | null;
+}
+
+/** Whether one battle belongs to a queue tab. One rule for every club screen. */
+export function inQueue(battle: PlayerBattle, queue: MetaQueue): boolean {
+  if (queue === "all") return true;
+  return queue === "ranked" ? battle.ranked : !battle.ranked;
 }
 
 /** One queue's competitive battles, grouped by whatever `key` returns. */
@@ -78,6 +89,7 @@ export function aggregateBattles(
     if (!Array.isArray(log.battles) || log.battles.length === 0) continue;
     for (const battle of log.battles) {
       if (!battle.competitive || battle.result === null) continue;
+      if (scope.map != null && battle.map !== scope.map) continue;
       const at = Date.parse(battle.timestamp);
       if (scope.sinceMs != null && (!Number.isFinite(at) || at < scope.sinceMs)) continue;
       members.add(log.tag);
@@ -88,9 +100,7 @@ export function aggregateBattles(
     }
   }
 
-  const selected = competitive.filter((row) =>
-    queue === "all" ? true : queue === "ranked" ? row.ranked : !row.ranked,
-  );
+  const selected = competitive.filter((row) => inQueue(row.battle, queue));
 
   const table = (key: (battle: PlayerBattle) => string | null): MetaRow[] => {
     const groups = new Map<string, MetaRow>();
@@ -136,4 +146,47 @@ export function aggregateBattles(
     modes: table((battle) => battle.mode),
     maps: table((battle) => battle.map),
   };
+}
+
+/**
+ * One map's competitive battles that published no win or loss — every Showdown
+ * game, as measured on the live payload. They are left out of the tables above,
+ * so a screen that looks empty can still say how many were played.
+ */
+export function battlesWithoutResult(
+  logs: Array<{ tag: string; battles: PlayerBattle[] }>,
+  map: string,
+): number {
+  let counted = 0;
+  for (const log of logs) {
+    if (!Array.isArray(log.battles)) continue;
+    for (const battle of log.battles) {
+      if (battle.competitive && battle.result === null && battle.map === map) counted += 1;
+    }
+  }
+  return counted;
+}
+
+/**
+ * One map's competitive battles, newest first — the rows a map's own screen
+ * lists. A battle with an unparseable timestamp sorts last rather than first.
+ */
+export function battlesOnMap(
+  logs: Array<{ tag: string; battles: PlayerBattle[] }>,
+  map: string,
+  limit = 25,
+): Array<{ tag: string; battle: PlayerBattle }> {
+  const rows: Array<{ tag: string; battle: PlayerBattle; at: number }> = [];
+  for (const log of logs) {
+    if (!Array.isArray(log.battles)) continue;
+    for (const battle of log.battles) {
+      if (!battle.competitive || battle.result === null || battle.map !== map) continue;
+      const at = Date.parse(battle.timestamp);
+      rows.push({ tag: log.tag, battle, at: Number.isFinite(at) ? at : 0 });
+    }
+  }
+  return rows
+    .sort((a, b) => b.at - a.at)
+    .slice(0, limit)
+    .map(({ tag, battle }) => ({ tag, battle }));
 }
