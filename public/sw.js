@@ -7,7 +7,7 @@
  * the same-origin URL as a normal GET, follow the redirect, and return a fresh
  * Response so iOS does not leave standalone mode on a redirected response.
  */
-const SHELL = "n3x-shell-v3";
+const SHELL = "n3x-shell-v4";
 
 function shellUrl() {
   return new URL(self.registration.scope).href;
@@ -27,7 +27,13 @@ self.addEventListener("activate", (event) => {
   event.waitUntil(
     caches
       .keys()
-      .then((keys) => Promise.all(keys.filter((key) => key !== SHELL && key !== "hotlane-cdn-v1").map((key) => caches.delete(key))))
+      .then((keys) =>
+        Promise.all(
+          keys
+            .filter((key) => key !== SHELL && key !== "hotlane-cdn-v1")
+            .map((key) => caches.delete(key)),
+        ),
+      )
       .then(() => self.clients.claim()),
   );
 });
@@ -67,11 +73,21 @@ self.addEventListener("fetch", (event) => {
             redirect: "follow",
           }),
         );
-        if (res && res.ok) {
+        // A static host answers a deep link it does not prerender — a member
+        // page, say — with its 404 document. That document *is* the app and it
+        // is the build the host serves right now, so it is used and cached.
+        // Treating it as a failed fetch is what used to hand back the cached
+        // shell of an older build, whose chunks the host no longer has.
+        if (res && (res.ok || res.status === 404)) {
           const copy = res.clone();
           // Keep the exact document for an offline revisit without replacing
           // the root shell with the last route that happened to load.
-          event.waitUntil(caches.open(SHELL).then((cache) => cache.put(req, copy)).catch(() => undefined));
+          event.waitUntil(
+            caches
+              .open(SHELL)
+              .then((cache) => cache.put(req, copy))
+              .catch(() => undefined),
+          );
           return res;
         }
       } catch {

@@ -28,7 +28,16 @@ export function AppErrorComponent({ error }: ErrorComponentProps) {
   const words = STRINGS[readPref("n3x.lang") === "pl" ? "pl" : "en"];
 
   useEffect(() => {
-    if (stale) setReloading(reloadOnce());
+    if (!stale) return;
+    let cancelled = false;
+    // Async now: the reload waits for the cached documents to be dropped, so it
+    // cannot be answered with the same stale shell.
+    void reloadOnce().then((reloading) => {
+      if (!cancelled) setReloading(reloading);
+    });
+    return () => {
+      cancelled = true;
+    };
   }, [stale]);
 
   return (

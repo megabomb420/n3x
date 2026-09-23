@@ -22,7 +22,7 @@ export function VersionGuard() {
       const { state } = await checkForUpdate(import.meta.env.BASE_URL);
       if (!mounted || state !== "outdated") return;
       await refreshServiceWorker();
-      reloadOnce();
+      await reloadOnce();
     };
 
     const onVisibility = () => {
