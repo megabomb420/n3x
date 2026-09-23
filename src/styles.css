@@ -129,7 +129,17 @@
     padding-top: calc(env(safe-area-inset-top, 0px) + 1.6rem);
   }
   .safe-bottom {
-    padding-bottom: calc(var(--inset-bottom, env(safe-area-inset-bottom, 0px)) + 0.25rem);
+    padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 0.25rem);
+  }
+}
+
+/* Fresh iOS Home Screen installs can report a zero bottom inset even while
+   the gesture indicator overlays the page. Reserve its 34px area on phones. */
+@supports (-webkit-touch-callout: none) {
+  @media (display-mode: standalone) and (pointer: coarse) and (max-width: 600px) and (min-height: 750px) {
+    .safe-bottom {
+      padding-bottom: calc(max(env(safe-area-inset-bottom, 0px), 34px) + 0.25rem);
+    }
   }
 }
 

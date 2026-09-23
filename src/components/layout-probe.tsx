@@ -45,7 +45,9 @@ export function LayoutProbe() {
 
     const read = () => {
       const root = document.documentElement;
-      const standalone = matchMedia("(display-mode: standalone), (display-mode: fullscreen)").matches;
+      const standalone = matchMedia(
+        "(display-mode: standalone), (display-mode: fullscreen)",
+      ).matches;
       const box = (el: Element | null) => {
         if (!el) return "—";
         const r = el.getBoundingClientRect();
@@ -58,7 +60,7 @@ export function LayoutProbe() {
         `inner ${window.innerHeight} · vv ${Math.round(window.visualViewport?.height ?? 0)} · vvTop ${Math.round(window.visualViewport?.offsetTop ?? 0)}`,
         `doc ${root.clientHeight} · scroll ${root.scrollHeight} · screen ${screenHeight} · dpr ${window.devicePixelRatio}`,
         `lvh ${measure("height:100lvh")} · svh ${measure("height:100svh")} · dvh ${measure("height:100dvh")}`,
-        `env top ${env("top")} · bottom ${env("bottom")} · app-h ${root.style.getPropertyValue("--app-h") || "unset"} · inset-b ${root.style.getPropertyValue("--inset-bottom") || "unset"}`,
+        `env top ${env("top")} · bottom ${env("bottom")} · app-h ${root.style.getPropertyValue("--app-h") || "unset"} · nav-pad ${getComputedStyle(document.querySelector("nav") ?? root).paddingBottom}`,
         `standalone ${standalone}`,
         `column ${box(column)} · nav ${box(document.querySelector("nav"))}`,
       ]);
