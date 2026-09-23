@@ -32,6 +32,10 @@ export const STRINGS = {
     "common.offline": "You're offline. Connect to refresh.",
     "common.offlineStale": "Offline — showing last saved snapshot. Numbers may be stale.",
     "common.back": "Back to club",
+    "common.reload": "Reload",
+    "error.title": "Something went wrong",
+    "error.oldBuild": "New version available",
+    "error.oldBuildBody": "This copy of the app was older than the one on the server, so it is reloading onto the current build.",
 
     "role.president": "President",
     "role.vicePresident": "Vice President",
@@ -222,6 +226,10 @@ export const STRINGS = {
     "common.offline": "Brak połączenia. Połącz się, aby odświeżyć.",
     "common.offlineStale": "Brak połączenia — ostatni zapisany stan. Liczby mogą być nieaktualne.",
     "common.back": "Wróć do klubu",
+    "common.reload": "Odśwież",
+    "error.title": "Coś się nie udało",
+    "error.oldBuild": "Jest nowsza wersja",
+    "error.oldBuildBody": "Ta kopia aplikacji była starsza niż ta na serwerze, więc przeładowuję się na aktualną wersję.",
 
     "role.president": "Dowódca",
     "role.vicePresident": "Z-ca dowódcy",

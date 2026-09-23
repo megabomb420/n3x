@@ -3,6 +3,7 @@ import { AuthProvider } from "@/lib/auth/provider";
 import { LanguageProvider } from "@/lib/i18n/provider";
 import { PreviewHostBridge } from "@/components/preview-host-bridge";
 import { LayoutProbe } from "@/components/layout-probe";
+import { VersionGuard } from "@/components/version-guard";
 import { AppProviders } from "@/components/app-providers";
 import appCss from "../styles.css?url";
 
@@ -58,6 +59,7 @@ function RootDocument() {
       <body className="bg-bg text-fg">
         <PreviewHostBridge />
         <LayoutProbe />
+        <VersionGuard />
         <AuthProvider>
           <LanguageProvider>
             <AppProviders>
