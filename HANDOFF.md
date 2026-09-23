@@ -124,6 +124,17 @@ The fix, in two places:
 
 Verified on the stuck tab itself (the one showing the error screen): after the new worker activated, the same deep link booted the current build (`index-CWLbSUFa.js`) with no error screen, and the new cache holds the current document under `/`. Both hosts serve the fixed build; Cloudflare Pages needed its own redeploy, and one earlier Cloudflare deploy in this session went out with the `/n3x/` base by mistake — caught by reading the served document (`/n3x/assets/…` on a root host) and redeployed.
 
+## The star's lower point, and a wash on the club card (23 Sep 2026)
+
+**The header mark showed a flat-bottomed star with a bar under it** (the owner spotted it). Measured on `og.jpg`: the star's lower point descends *behind* the `'N3X` wordmark, so the last row that is star and nothing else is **438** and rows 439+ are the wordmark's own glow — the sprite stopped there, and the old crop (`STAR_ROW_SPLIT = 443`) pulled five rows of letters in with it. Two further artefacts came out of the same measurement: the wordmark sprite started at 444, losing the letters' top edge in every icon, and `og.jpg`'s vignette (corners (6,7,11), lower edge (3,4,5)) against the app's `BG` (5,7,10) made each pasted sprite show as a black rectangle.
+
+- The missing tip is rebuilt from the star's own top point: the star is symmetric about its horizontal axis — measured on the 1500 px original, the two halves agree within 3 px (row 1120 ↔ 230, 1100 ↔ 250, 1080 ↔ 270) — so the rows below the cut are the top point's rows mirrored. Only that point's silhouette is copied, through the centre column, so no letter pixel can enter the sprite. Constants are now measured rather than eyeballed: apex 48, axis 287, cut 438; the tip ends at row 478 where the symmetry says it should.
+- The wordmark sprite starts at 439, so the icons keep the letters' top edge.
+- `on_background` flattens anything darker than 14 onto `BG`, which removes the rectangle.
+- Regenerated: `n3x-mark.png` (28.7 → 27.1 KB) and every icon. Verified visually (mark, 512 icon, header at 40 px) and by md5 on both hosts after their deploys — GitHub Pages' copy initially lagged because its run for the commit was still in progress, and the asset URL is unhashed with `max-age=600`, so a client can hold the old mark for ten minutes.
+
+**The club's info card carries a wash.** The accent from the card's top-left corner, gone by the middle of the card (`from-gold/[0.13] via-transparent to-transparent`), clipped exactly by the card's radius (`overflow-hidden` on `rounded-2xl`). The content is wrapped in a positioned div so every line reads *above* the wash rather than under it — an absolutely positioned layer paints over unpositioned siblings, which would have tinted the description and the numbers. Verified in the browser: the gradient computes as `linear-gradient(to right bottom, oklab(… / 0.13) 0%, transparent 50%, transparent 100%)`, the card is `16px` radius with `overflow: hidden`, and the stat tiles sit on plain surface.
+
 ## History
 
 ### Original handoff (22 Sep 2026): the published site did not load club or meta
