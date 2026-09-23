@@ -178,6 +178,8 @@ export function mapPlayer(raw, clubRole = null, clubTag = "") {
     name: String(brawler?.name ?? ""),
     power: num(brawler?.power),
     rank: num(brawler?.rank),
+    /** Post-1,000-trophy progression; 0 means the brawler has not reached it. */
+    prestige: num(brawler?.prestigeLevel),
     trophies: num(brawler?.trophies),
     highestTrophies: num(brawler?.highestTrophies),
     hyper: Array.isArray(brawler?.hyperCharges) && brawler.hyperCharges.length > 0,

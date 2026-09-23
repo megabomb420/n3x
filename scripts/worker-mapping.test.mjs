@@ -142,6 +142,7 @@ test("a player payload becomes the app's profile with Ranked fields", () => {
           rank: 25,
           trophies: 1500,
           highestTrophies: 1600,
+          prestigeLevel: 3,
           hyperCharges: [{ id: 0, name: "Hyper" }],
         },
       ],
@@ -164,6 +165,12 @@ test("a player payload becomes the app's profile with Ranked fields", () => {
   assert.equal(profile.brawlers[0].hyper, true);
   assert.equal(profile.brawlers[1].hyper, false);
   assert.equal(profile.brawlers[0].slug, "nita");
+  assert.equal(profile.brawlers[0].prestige, 3, "prestige comes from the API's prestigeLevel");
+  assert.equal(
+    profile.brawlers[1].prestige,
+    0,
+    "a brawler the API publishes no prestige for reads as none",
+  );
 });
 
 test("the battle log becomes the app's battle rows, Ranked queues included", () => {

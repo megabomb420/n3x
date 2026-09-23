@@ -55,7 +55,10 @@ export function MemberScreen({ tag }: { tag: string }) {
       <section className="flex items-center gap-3 rounded-2xl bg-surface p-4">
         <PlayerIcon src={player.iconUrl} name={player.name} size={56} />
         <div className="min-w-0 flex-1">
-          <p className="truncate font-display text-3xl leading-none tracking-wide" style={color ? { color } : undefined}>
+          <p
+            className="truncate font-display text-3xl leading-none tracking-wide"
+            style={color ? { color } : undefined}
+          >
             {player.name}
           </p>
           <p className="mt-1 font-mono text-xs text-subtle">#{player.tag}</p>
@@ -79,7 +82,7 @@ export function MemberScreen({ tag }: { tag: string }) {
           value={
             player.rankedElo != null
               ? `${formatTrophies(player.rankedElo)} ELO`
-              : player.rankedRankName ?? "—"
+              : (player.rankedRankName ?? "—")
           }
           sub={player.rankedRankName}
         />
@@ -88,43 +91,55 @@ export function MemberScreen({ tag }: { tag: string }) {
           value={
             player.highestAllTimeRankedElo != null
               ? `${formatTrophies(player.highestAllTimeRankedElo)} ELO`
-              : player.highestAllTimeRankedRankName ?? "—"
+              : (player.highestAllTimeRankedRankName ?? "—")
           }
           sub={player.highestAllTimeRankedRankName}
         />
         <Tile label={t("member.wins3v3")} value={formatTrophies(player.victories3v3)} />
-        <Tile label={t("member.showdown")} value={formatTrophies(player.soloVictories + player.duoVictories)} />
+        <Tile
+          label={t("member.showdown")}
+          value={formatTrophies(player.soloVictories + player.duoVictories)}
+        />
       </dl>
 
       <section>
-        <h2 className="mb-1.5 font-display text-lg tracking-wide">{t("member.topBrawlers")}</h2>
+        <h2 className="mb-1 font-display text-lg tracking-wide">{t("member.topBrawlers")}</h2>
+        <p className="mb-1.5 text-[11px] leading-relaxed text-subtle">{t("member.brawlersHint")}</p>
         {topBrawlers.length === 0 ? (
           <EmptyState title={t("member.noBrawlers.title")} body={t("member.noBrawlers.body")} />
         ) : (
           <ul className="flex flex-col gap-1.5">
             {topBrawlers.map((b) => {
               const catalog = catalogQuery.data
-                ? catalogQuery.data.brawlers.find(
+                ? (catalogQuery.data.brawlers.find(
                     (c) => c.slug === b.slug || c.cubeName.toLowerCase() === b.slug,
-                  ) ?? null
+                  ) ?? null)
                 : null;
               return (
                 <li
                   key={b.id || b.slug}
                   className="flex items-center gap-3 rounded-xl bg-surface px-3 py-2"
                 >
-                  <Portrait catalog={catalog} cubeName={catalog?.cubeName ?? b.name} size={36} decorative />
+                  <Portrait
+                    catalog={catalog}
+                    cubeName={catalog?.cubeName ?? b.name}
+                    size={36}
+                    decorative
+                  />
                   <div className="min-w-0 flex-1">
                     <p className="truncate text-sm font-medium">
                       {catalog?.name ?? displayBrawlerName(b.name)}
                     </p>
                     <p className="text-xs text-subtle">
-                      P{b.power}
-                      {b.rank ? ` · ${t("member.rank", { rank: b.rank })}` : ""}
-                      {b.hyper ? " · HC" : ""}
+                      {t("member.powerLevel", { level: b.power })}
+                      {b.rank ? ` · ${t("member.brawlerRank", { rank: b.rank })}` : ""}
+                      {b.hyper ? ` · ${t("member.hypercharge")}` : ""}
+                      {b.prestige > 0 ? ` · ${t("member.prestige", { level: b.prestige })}` : ""}
                     </p>
                   </div>
-                  <p className="font-mono text-sm tabular text-gold">{formatTrophies(b.trophies)}</p>
+                  <p className="font-mono text-sm tabular text-gold">
+                    {formatTrophies(b.trophies)}
+                  </p>
                 </li>
               );
             })}
@@ -144,10 +159,19 @@ export function MemberScreen({ tag }: { tag: string }) {
                   <p
                     className={cn(
                       "text-sm font-medium",
-                      b.victory === true ? "text-win" : b.victory === false ? "text-danger" : "text-fg",
+                      b.victory === true
+                        ? "text-win"
+                        : b.victory === false
+                          ? "text-danger"
+                          : "text-fg",
                     )}
                   >
-                    {b.result || (b.victory === true ? t("member.victory") : b.victory === false ? t("member.defeat") : t("member.battle"))}
+                    {b.result ||
+                      (b.victory === true
+                        ? t("member.victory")
+                        : b.victory === false
+                          ? t("member.defeat")
+                          : t("member.battle"))}
                   </p>
                   <p className="text-xs text-subtle">{formatRelative(b.timestamp)}</p>
                 </div>

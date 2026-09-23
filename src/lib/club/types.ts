@@ -53,6 +53,8 @@ export interface PlayerBrawler {
   name: string;
   power: number;
   rank: number;
+  /** Prestige progress past 1,000 trophies; 0 means none reached. */
+  prestige: number;
   trophies: number;
   highestTrophies: number;
   hyper: boolean;

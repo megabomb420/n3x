@@ -226,7 +226,12 @@ export const STRINGS = {
     "member.victory": "Victory",
     "member.defeat": "Defeat",
     "member.battle": "Battle",
-    "member.rank": "Rank {rank}",
+    "member.powerLevel": "Power level {level}",
+    "member.brawlerRank": "Brawler rank {rank}",
+    "member.hypercharge": "Hypercharge",
+    "member.prestige": "Prestige {level}",
+    "member.brawlersHint":
+      "Power level = upgrades (1–11) · Brawler rank = trophy milestones reached with this brawler, not the Ranked league · Hypercharge = unlocked · Prestige = progress past 1,000 trophies",
 
     "settings.title": "Settings",
     "settings.language": "Language",
@@ -470,7 +475,12 @@ export const STRINGS = {
     "member.victory": "Wygrana",
     "member.defeat": "Porażka",
     "member.battle": "Bitwa",
-    "member.rank": "Ranga {rank}",
+    "member.powerLevel": "Poziom mocy {level}",
+    "member.brawlerRank": "Ranga Zadymiarza {rank}",
+    "member.hypercharge": "Hiperdoładowanie",
+    "member.prestige": "Prestiż {level}",
+    "member.brawlersHint":
+      "Poziom mocy = ulepszenia (1–11) · Ranga Zadymiarza = progi pucharów zdobyte tym Zadymiarzem, nie liga w Ranked · Hiperdoładowanie = odblokowane · Prestiż = progres powyżej 1000 pucharów",
 
     "settings.title": "Ustawienia",
     "settings.language": "Język",
