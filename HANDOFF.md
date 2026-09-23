@@ -156,6 +156,41 @@ What the page is given: `inner` = `vv` = `doc` = **812**, screen **874**, `100lv
 
 **What is still worth trying.** `apple-mobile-web-app-status-bar-style: default`, then no status-bar meta at all; if neither moves it, accept that the band is the system's and stop burning attempts on it. One screenshot from the installed app after a full relaunch (swipe the app away, reopen, then `?diag=1`) settles it: `env top 0px` means the view sits below the status bar and the band should be gone; `env top 62px` means iOS kept the anchored-at-top sizing and the space is unreachable. The probe is in the app for exactly this — do not remove it without leaving a replacement way to read those four numbers.
 
+### What fought back, and what is not done
+
+Written by the session that added the Ranked board, the swipe, the stale-build guards and the Stats rework. Kept blunt on purpose: several of these cost hours because the first plausible explanation was wrong.
+
+**Asked for, not delivered.**
+
+1. **The dead band under the nav** — asked twice, four fixes shipped, the last ~62 px are still not ours. Details and the remaining options are in the OPEN section above; do not start from the same assumptions.
+2. **Portrait lock.** The manifest asks for `orientation: portrait` and the shell calls `screen.orientation.lock("portrait")` behind a guard, but WebKit ignores the manifest member for home-screen apps and refuses the lock outside fullscreen — an iPhone still rotates. A CSS "fake lock" (rotating the layout on `orientationchange`) was offered and deliberately not built: it breaks touch coordinates, the keyboard and the safe areas. So on iOS this request cannot be honoured from a web app.
+3. **"In Ladder remove Elo"** was read as the Stats screen, because the Ladder screen shows no Elo to remove — the official rankings endpoint is trophy-only. Elo therefore left Stats entirely and now lives only on the club's Ranked board. If the ask was about the Ladder screen itself, it is not done, and there is nothing in the API to put there.
+4. **The status-bar variants** (`apple-mobile-web-app-status-bar-style: default`, then no meta at all) are still untried. Each is one deploy and one full app relaunch, then a probe screenshot; see the OPEN section.
+
+**Where the first explanation was wrong.**
+
+- **The bottom band.** `100svh` looked like the cause and was not: `inner`/`vv`/`doc` are *all* 812 on iOS 26 standalone, so `height: 100%`, `100svh` and a grown column all land on the same short viewport, and a fixed bar at the bottom of `100lvh` is never displayed. The measurement that settled it was the probe, not reasoning.
+- **The "ghost" over the header.** It is not a duplicated header and not a rendering bug: iOS lays a blur band over the top of the screen and samples whatever is under it, so the fix is dark space above the bright mark, not a different layout.
+- **The Stats member list showing Elo as trophies.** The first fix split the units in the aggregate — which was a real bug (the All queue added ladder trophies to Ranked Elo) — and only then did the data say the second half: the API sends `trophyChange: null` for every Ranked battle (five of five checked). There is no Ranked gain to show, ever; the column is ladder-only and hidden in the Ranked queue.
+
+**The API's gaps, as measured (not as assumed).**
+
+- Club members: trophies only. Every Ranked value per member costs one `/player/{tag}` call — 28 of them took 38 s at three-at-a-time and 18 s at six, which is why the board loads lazily (IntersectionObserver), fills per batch, and holds the roster order until the run is done.
+- Ranked battles publish no trophy change and no Elo delta.
+- There is no Elo or Ranked leaderboard endpoint, so tiers on the Ladder screen would mean 200 profile requests per view. Not done, and not going to be.
+
+**Tooling that misled.**
+
+- **The layout probe is easy to misread.** A panel placed in the top ~70 px is unreadable — iOS blurs exactly there — and `document.querySelector("body > div")` matched the probe's own overlay rather than the app column, which made the first magenta outline meaningless. The panel belongs at the bottom, and the column comes from `nav.parentElement`.
+- **`tab.run` / `page.evaluate` runs in an isolated world.** Window-level stubs (`matchMedia`, `visualViewport.height`) never reach the app, which made a working guard look broken; DOM reads and mutations *do* cross over, so gestures have to be simulated by dispatching real `TouchEvent`s on the real elements.
+- **Serving `.vercel/output/static` while building it** makes the build fail with "index.html is missing — run a build first". Stop the static server before `npm run build`.
+- **The tab swipe** was built and then removed on request: it decided the gesture axis too early, so diagonal drags — the normal kind — grabbed the swipe instead of the scroll. If it is ever rebuilt, the axis test needs to wait for a longer, straighter movement and the drag must not start until vertical scrolling is clearly ruled out.
+
+**Noticed and left alone.**
+
+- `public/n3x-logo.png` (1.4 MB) and `public/n3x-logo.jpg` (240 KB) are referenced nowhere — not in `src/`, not in the built output, and not by the platform's share-card lookup, which resolves `og.jpg`/`og.png` only. Together they are about 57% of the 2.8 MB deploy. Left in place rather than deleted: they are the only high-resolution copies of the artwork and removing them was not asked for. **`public/og.jpg` must stay** — link previews are built from it.
+- `src/components/layout-probe.tsx` and `src/components/version-guard.tsx` look like scaffolding and are not: the probe is the only way to read the viewport numbers on the device, and the guard is what stops a stale chunk from dead-ending the app. Both are described above.
+
 ### What was broken then (Grok era — resolved by the rewrite)
 
 On https://n3x.grok.me/ the shell renders and then:
