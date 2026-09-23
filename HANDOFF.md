@@ -1,12 +1,28 @@
-# Handoff — 'N3X public 403
+# Handoff — 'N3X club companion
 
-Written 22 Sep 2026. Repo: https://github.com/megabomb420/n3x
-Live site: https://n3x.grok.me/
-Issue: https://github.com/megabomb420/n3x/issues/1
+Started 22 Sep 2026, last updated 23 Sep 2026. Repo: https://github.com/megabomb420/n3x
 
-The product works in the Grok preview. The **published** site does not load club or meta. Do not invent stats, an API key, or a fake roster to hide that.
+## Current status (23 Sep 2026)
 
-## 2026-09-22 (evening): BTN is unreachable from any host — rebuilding on the official API
+Live on free hosting, with nothing of the owner's running:
+
+- https://n3x-dk5.pages.dev — Cloudflare Pages, root base
+- https://megabomb420.github.io/n3x/ — GitHub Pages under `/n3x/`, published by `.github/workflows/pages.yml` on every push to `main`
+- https://n3x-api.whip-blanket.workers.dev — the backend Worker; `/health` says whether its API key is configured. Surface: `GET /club`, `/player/<tag>`, `/battles/<tag>`, `/ladder?type=players|clubs`, `/maps`, `/creators`, `/creators/<id>`, and the guarded `/__warm?index=N`.
+
+Five tabs: **Club** (roster, member pages, join/leave in KV), **Stats** (the club's own battle logs), **Meta** (creator uploads from public YouTube feeds), **Ladder** (official leaderboards) and **Maps** (live rotation). Club, player, ladder and map data come from the official Brawl Stars API through the Worker; nothing reads Brawl Time Ninja any more. `BRAWL_API_KEY` and `REGISTER_KEY` are set as Worker secrets — the API key belongs to the owner and its Supercell-side allowlist points at RoyaleAPI's proxy address.
+
+The old Grok/Vercel copy at https://n3x.grok.me/ is superseded and still serves its stale build; nothing points at it. Issue #1 (the original 403 report) carries the closing summary.
+
+Everything below the history marker is the record of how the app got here — starting with the original Grok-export handoff and its BTN 403 investigation. Those sections describe a state that no longer exists; read them as provenance, not as instructions.
+
+## History
+
+### Original handoff (22 Sep 2026): the published site did not load club or meta
+
+The product worked in the Grok preview while the **published** site at https://n3x.grok.me/ did not load club or meta. Do not invent stats, an API key, or a fake roster to hide that.
+
+### 2026-09-22 (evening): BTN is unreachable from any host — rebuilding on the official API
 
 Measured, not assumed (all from this machine):
 
@@ -50,8 +66,9 @@ The owner meant the *game's* meta by "Meta", so the club numbers moved to **Stat
 - Tests grew to ten in `scripts/worker-mapping.test.mjs` (creator title classification and feed parsing among them) plus the club-stats arithmetic tests.
 - **Extras the owner asked for:** three more verified channels (Rey, Lex, bobby — each checked for a real channel id and a live feed; several candidates were dropped because their feeds are empty or stale), a `Tier lists` / `Everything` filter, and a "Named most in titles" board counting brawler names across the last 30 days of headlines.
 - The backend was reshaped for that: `GET /creators` is now just the index of channels and `GET /creators/<id>` answers one feed, because a single Worker invocation could not hold seven feeds inside its subrequest budget (the same reason `/battles/<tag>` exists). The app fans out four at a time and caches each channel for half an hour.
-- Lead-video choice, the filter and the mention counting live in `src/lib/meta/creator-math.ts` (pure, tested in `creator-math.test.ts`); `CACHE_VERSION` went to 3 so the edge stopped serving the four-channel index.
-- **YouTube throttles the edge addresses.** A feed that answers `200` from a home connection answers `429` from the Worker (verified side by side), and with seven channels fetched on every page view some cards went empty. Mitigations, all in this commit: one short retry inside `creatorFeed`, the last good reading of each channel kept in KV for six hours and served as `stale: true` when a refresh fails (the card then says "showing the last reading from …"), a `*/15` cron that warms one channel per run so the feeds are refreshed gently instead of in bursts, and a guarded `GET /__warm?index=N` to do the same on demand. `CACHE_VERSION` 4 retired the cached error payloads. The ops key for that route lives in the git-ignored `worker/.dev.vars`.
+- Lead-video choice, the filter and the mention counting live in `src/lib/meta/creator-math.ts` (pure, tested in `creator-math.test.ts`). The edge `CACHE_VERSION` is 4 and the client keeps its own `CACHE_TAG` (also 4) in the request URLs, so neither layer re-serves a payload from an older release.
+- **YouTube throttles the edge addresses.** A feed that answers `200` from a home connection answers `429` from the Worker (verified side by side), so seven channels fetched on one page view left cards empty. Mitigations in place: one short retry inside `creatorFeed`, each channel's last good reading kept in KV for six hours and served as `stale: true` when a refresh fails (the card then says "showing the last reading from …"), a `*/15` cron that warms one channel per run instead of bursting, and a guarded `GET /__warm?index=N` for on-demand warming (its key is the `REGISTER_KEY` secret; the local copy lives in the git-ignored `worker/.dev.vars`).
+- **A failed read is never cached.** A `429` stored by the browser kept a card empty for half an hour after YouTube answered again; only successful readings are kept now, and a failed refresh falls back to the Worker's KV copy instead. That, plus the retry above, is why the board survives the throttling.
 
 ### 2026-09-22 (late): live on the official API
 
@@ -89,7 +106,7 @@ The client no longer knows Brawl Time Ninja exists.
 
 ### Hosting
 
-- Prerendering is on for `/`, `/ladder`, `/maps`, `/about`: the nitro/vercel preset builds the document inside its function, so a static host would otherwise have no `index.html`. Data still arrives on the client after hydration; member deep links land on each host's 404 fallback.
+- Prerendering is on for `/`, `/stats`, `/meta`, `/ladder`, `/maps` and `/about`: the nitro/vercel preset builds the document inside its function, so a static host would otherwise have no `index.html`. Data still arrives on the client after hydration; member deep links land on each host's 404 fallback.
 - The router takes its `basepath` from `import.meta.env.BASE_URL`, so the same source serves `/` (Cloudflare Pages, Vercel, the Worker) and `/n3x/` (GitHub Pages project site).
 - `npm run build:pages` builds with `--base=/n3x/` and runs `scripts/static-fallback.mjs`, which copies the document to `404.html` and adds `.nojekyll`.
 - GitHub Pages is enabled on the repository (`build_type: workflow`); `.github/workflows/pages.yml` builds and deploys on every push to `main`. Cloudflare Pages project `n3x` serves the root-based build at https://n3x-dk5.pages.dev.
@@ -97,9 +114,11 @@ The client no longer knows Brawl Time Ninja exists.
 - `scripts/build.mjs` ends the build once prerendering is done: the prerenderer finishes and then the process stays alive (its Vite preview server is closed in a `finally`, yet the event loop stays busy), which hung `npm run build` and the whole Pages job. It forwards the build output and ends the child after that output goes quiet; a build that exits on its own keeps its own code.
 - `scripts/static-fallback.mjs` prefixes the base onto local `src`/`href` references in every emitted document (the platform head tags are root-absolute) and copies the fallback after that rewrite, so `/n3x/404.html` carries it too.
 
-Verified so far: `tsc --noEmit` clean; the 6 mapping tests pass; the dev server and both static hosts call the Worker. Cloudflare Pages (https://n3x-dk5.pages.dev) serves the prerendered shell at `/`, `/ladder` and `/maps`, and a member deep link (`/m/2JYGUQ2P8`) lands on the `404.html` fallback and boots the router. Every club/player/ladder request answers 503 with the honest "Data source is not configured yet (the backend is missing its API key)" state and the Club / Ladder / Maps nav. **Not yet verified: real data end to end — that needs `BRAWL_API_KEY`.**
+Verified in this session: `tsc --noEmit` clean; 205 tests (`scripts/**` — ten of them mapping the Worker's payloads — plus the TypeScript suites, with the 18 sandbox-environment failures described below); `npm run build` and `npm run build:pages` clean in about six seconds each; a real browser on both hosts showing the club roster (28 members, 3,532,223 trophies), a member page (Ranked 3,575 Elo / DIAMOND II, 107 brawlers, 25 battles), Stats (436 battles, 64%, small-sample badges), Meta (seven creator channels, tier-list badges, zero feed errors), Ladder (200 rows, markup stripped) and Maps (13 live events) — plus screenshots reviewed for layout, a deep link through the `404.html` fallback, and the Worker's live payloads checked channel by channel.
 
-`npm test` on this machine: 55 TypeScript tests pass; of the 201 `scripts/**` tests, 18 fail for reasons that predate this work — they assert on the Grok sandbox's `.grok/skills/**` and `.grok/app-env.json`, which are not part of the repository, and two need symlink privileges Windows does not grant by default. Before this commit the same command silently ran **zero** of them under cmd; the glob is now double-quoted so both shells expand it.
+Earlier in the same session, before `BRAWL_API_KEY` was set: the dev server and both static hosts served the shell and the honest "Data source is not configured yet (the backend is missing its API key)" state — kept here as the record of what the app does when its key is missing.
+
+`npm test` on this machine: 61 TypeScript tests pass; of the 205 `scripts/**` tests, 18 fail for reasons that predate this work — they assert on the Grok sandbox's `.grok/skills/**` and `.grok/app-env.json`, which are not part of the repository, and two need symlink privileges Windows does not grant by default. Before this session the same command silently ran **zero** of them under cmd; the glob is now double-quoted so both shells expand it.
 
 Unofficial companion for Brawl Stars club **'N3X**, tag `#2JYGUQ2P8`. Not affiliated with Supercell or Brawl Time Ninja.
 
@@ -163,20 +182,23 @@ All of this is on `main`. The published site was still 403 the last time it was 
 
 ## Where to change code
 
+The map as of the rewrite (during the BTN era this table named `src/lib/http/outbound.ts`, `src/lib/http/btn-client.ts`, `src/lib/club/parse.ts` and `src/lib/meta/cube.ts` — the rewrite deleted all four):
+
 | File | Role |
 |---|---|
-| `src/lib/http/outbound.ts` | Server fetch + curl fallback |
-| `src/lib/http/btn-client.ts` | Browser attempts |
-| `src/lib/club/queries.ts` | `getClubHome` / `getClubPlayer` server fns, `fetchHtmlSmart`, snapshot diff |
-| `src/lib/club/parse.ts` | vike HTML → club + player |
-| `src/lib/meta/token.ts` | Cube JWT |
-| `src/lib/meta/cube.ts` | Cube queries, league index map |
-| `vite.config.ts` | `/btn-src` proxy. Keep port `0.0.0.0:8080` for preview and Nitro `serverDir: "./server"`. |
+| `worker/index.js` | The whole backend: upstream calls, payload mapping, edge cache (`CACHE_VERSION`), KV snapshot + join/leave log, creator feeds, the `*/15` warmer and `/__warm` |
+| `worker/wrangler.jsonc` | Worker name, KV binding, cron trigger |
+| `src/lib/api/client.ts` | The app's single HTTP client against the Worker (`apiGet`) |
+| `src/lib/club/queries.ts`, `types.ts` | Club / member loaders and the payload contract |
+| `src/lib/club/stats.ts` (+ `stats.test.ts`) | Aggregation over the club's own battle logs |
+| `src/lib/meta/creators.ts`, `creator-math.ts` (+ test) | Creator channels, client cache, lead-video choice, the tier-list filter, mention counting |
+| `src/lib/meta/brawlapi.ts` | Brawler-name index the Meta board counts against |
+| `src/routes/` | One file per tab, plus the member route |
 
 ## Constraints
 
 - Do not invent rankings, sample sizes, or a club roster.
-- Do not add a Brawl Stars API token unless the owner provides one.
+- Do not add a Brawl Stars API token unless the owner provides one. *The owner has since created one; it is a Worker secret, never committed.*
 - Do not turn auth on. Do not call `authMiddleware` / `requireUserId`.
 - Do not hide the "Created with Grok" pill.
 - Do not put `og:*` tags in `src/routes/__root.tsx` (the PWA plugin overwrites them).

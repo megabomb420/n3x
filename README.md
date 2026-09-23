@@ -38,13 +38,14 @@ channels: tier-list uploads, an "everything" view and a count of brawler names i
 the last month's titles), **Ladder** (official leaderboards) and **Maps**
 (rotation).
 
-One owner step remains: create an API key at
-[developer.brawlstars.com](https://developer.brawlstars.com), whitelist
-RoyaleAPI's published proxy addresses (official keys are locked to IPs and a
-Worker has no fixed one), then run
-`npx wrangler secret put BRAWL_API_KEY --config worker/wrangler.jsonc`.
-Until it is set, every data endpoint answers `503 upstream-denied` and the app
-says exactly that instead of showing numbers.
+The API key is set: an owner-created key at
+[developer.brawlstars.com](https://developer.brawlstars.com) whose Supercell-side
+allowlist points at RoyaleAPI's published proxy addresses (official keys are
+locked to IPs and a Worker has no fixed one). It lives in Cloudflare as the
+Worker secret `BRAWL_API_KEY` — never in this repository. To replace it:
+`npx wrangler secret put BRAWL_API_KEY --config worker/wrangler.jsonc`, then
+delete the old key in the portal. Without a key every data endpoint answers
+`503 upstream-denied` and the app says exactly that instead of showing numbers.
 
 Hosting: `.github/workflows/pages.yml` publishes the static build to GitHub
 Pages under `/n3x/`, and the Cloudflare Pages project `n3x` serves the
