@@ -107,9 +107,16 @@ export function aggregateBattles(
     for (const { battle } of selected) {
       const name = key(battle);
       if (!name) continue;
-      const row =
-        groups.get(name) ??
-        { name, picks: 0, wins: 0, winRate: 0, trophyChange: 0, eloChange: 0, trophyKnown: 0, eloKnown: 0 };
+      const row = groups.get(name) ?? {
+        name,
+        picks: 0,
+        wins: 0,
+        winRate: 0,
+        trophyChange: 0,
+        eloChange: 0,
+        trophyKnown: 0,
+        eloKnown: 0,
+      };
       row.picks += 1;
       if (battle.victory) row.wins += 1;
       if (typeof battle.trophyChange === "number") {
@@ -181,6 +188,34 @@ export function battlesOnMap(
     if (!Array.isArray(log.battles)) continue;
     for (const battle of log.battles) {
       if (!battle.competitive || battle.result === null || battle.map !== map) continue;
+      const at = Date.parse(battle.timestamp);
+      rows.push({ tag: log.tag, battle, at: Number.isFinite(at) ? at : 0 });
+    }
+  }
+  return rows
+    .sort((a, b) => b.at - a.at)
+    .slice(0, limit)
+    .map(({ tag, battle }) => ({ tag, battle }));
+}
+
+/**
+ * The club's newest competitive battles across every member's log, newest
+ * first — what the club's own screen leads with, so a reader does not have to
+ * open Stats to see what the club has been playing.
+ *
+ * A Showdown game is kept: it is still a battle the club played, it simply
+ * published no win or loss. Each row names the member whose log it came from,
+ * because that is what the API returns — two members in one match are two logs.
+ */
+export function recentBattles(
+  logs: Array<{ tag: string; battles: PlayerBattle[] }>,
+  limit = 25,
+): Array<{ tag: string; battle: PlayerBattle }> {
+  const rows: Array<{ tag: string; battle: PlayerBattle; at: number }> = [];
+  for (const log of logs) {
+    if (!Array.isArray(log.battles)) continue;
+    for (const battle of log.battles) {
+      if (!battle.competitive) continue;
       const at = Date.parse(battle.timestamp);
       rows.push({ tag: log.tag, battle, at: Number.isFinite(at) ? at : 0 });
     }

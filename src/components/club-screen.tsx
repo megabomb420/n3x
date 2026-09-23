@@ -3,15 +3,20 @@ import { Link } from "@tanstack/react-router";
 import { Clock, LogIn, LogOut, Search, Shield } from "lucide-react";
 import { useMemo, useState } from "react";
 import { loadClubHome } from "@/lib/club/queries";
+import { loadClubLogs, recentBattles } from "@/lib/club/stats-loader";
 import { nameColorToCss } from "@/lib/club/format";
 import type { ClubEvent, ClubMember } from "@/lib/club/types";
 import { useRoleLabel, useT, type StringKey } from "@/lib/i18n/provider";
 import { formatRelative, formatTrophies } from "@/lib/meta/format";
 import { useOnline } from "@/hooks/use-online";
 import { cn } from "@/lib/utils";
+import { BattleRow } from "./battle-row";
 import { PlayerIcon } from "./player-icon";
 import { RankedBoard } from "./ranked-board";
 import { EmptyState, ErrorState, OfflineBanner, SkeletonRows } from "./state-views";
+
+/** The rows the club's own feed shows. */
+const FEED = 25;
 
 const TYPE_KEYS: Record<string, StringKey> = {
   inviteOnly: "club.type.inviteOnly",
@@ -33,6 +38,19 @@ export function ClubScreen() {
   const club = query.data?.club;
   const events = query.data?.events ?? [];
   const members = club?.members ?? [];
+  const logs = useQuery({
+    queryKey: ["club-logs"],
+    queryFn: loadClubLogs,
+    refetchInterval: 300_000,
+  });
+  const latest = useMemo(() => (logs.data ? recentBattles(logs.data.logs, FEED) : []), [logs.data]);
+  const memberName = useMemo(() => {
+    const names = new Map<string, string>();
+    for (const member of members) names.set(member.tag, member.name);
+    for (const entry of logs.data?.members ?? [])
+      if (!names.has(entry.tag)) names.set(entry.tag, entry.name);
+    return (tag: string) => names.get(tag) ?? `#${tag}`;
+  }, [members, logs.data]);
   const rankByTag = useMemo(() => {
     const map = new Map<string, number>();
     members.forEach((m, i) => map.set(m.tag, i + 1));
@@ -90,10 +108,16 @@ export function ClubScreen() {
             </p>
           </section>
 
-          <ActivityBlock
-            events={events}
-            baseline={query.data?.baseline ?? false}
-            tracking={query.data?.tracking ?? false}
+          {/* Ranked first, then what the club has been playing: both start with
+              the tab, so the reader does not have to scroll to trigger either. */}
+          {members.length > 0 ? <RankedBoard members={members} /> : null}
+
+          <ClubBattles
+            rows={latest}
+            name={memberName}
+            loading={logs.isLoading}
+            failed={logs.isError && !logs.data}
+            onRetry={() => void logs.refetch()}
           />
 
           <label className="flex min-h-11 items-center gap-2 rounded-xl bg-surface px-3">
@@ -120,10 +144,68 @@ export function ClubScreen() {
             )}
           </section>
 
-          {members.length > 0 ? <RankedBoard members={members} /> : null}
+          <ActivityBlock
+            events={events}
+            baseline={query.data?.baseline ?? false}
+            tracking={query.data?.tracking ?? false}
+          />
         </>
       ) : null}
     </div>
+  );
+}
+
+/** The club's newest competitive battles, from the members' own logs. */
+function ClubBattles({
+  rows,
+  name,
+  loading,
+  failed,
+  onRetry,
+}: {
+  rows: ReturnType<typeof recentBattles>;
+  name: (tag: string) => string;
+  loading: boolean;
+  failed: boolean;
+  onRetry: () => void;
+}) {
+  const t = useT();
+  return (
+    <section>
+      <div className="mb-1.5 flex items-baseline justify-between gap-3">
+        <h2 className="font-display text-lg tracking-wide">{t("club.battles")}</h2>
+        {loading ? (
+          <span className="text-[11px] text-subtle" aria-live="polite">
+            {t("club.battles.reading")}
+          </span>
+        ) : null}
+      </div>
+
+      {failed ? (
+        <ErrorState
+          title={t("state.club.battles")}
+          body={t("state.club.battlesBody")}
+          onRetry={onRetry}
+        />
+      ) : rows.length === 0 ? (
+        <p className="rounded-xl bg-surface px-3 py-3 text-sm text-muted">
+          {loading ? t("club.battles.reading") : t("club.battles.none")}
+        </p>
+      ) : (
+        <ul className="flex flex-col gap-1.5">
+          {rows.map(({ tag, battle }, index) => (
+            <BattleRow
+              key={`${tag}-${battle.timestamp}-${index}`}
+              battle={battle}
+              member={name(tag)}
+              showMap
+            />
+          ))}
+        </ul>
+      )}
+
+      <p className="mt-1.5 text-[11px] leading-relaxed text-subtle">{t("club.battles.note")}</p>
+    </section>
   );
 }
 
@@ -142,7 +224,8 @@ function MemberRow({ member, rank }: { member: ClubMember; rank: number }) {
   return (
     <li>
       <Link
-        to="/m/$tag/" replace
+        to="/m/$tag/"
+        replace
         params={{ tag: member.tag }}
         className="flex min-h-14 items-center gap-3 rounded-xl bg-surface px-3 py-2 transition-transform duration-150 ease-out active:scale-[0.98]"
       >
@@ -165,7 +248,9 @@ function MemberRow({ member, rank }: { member: ClubMember; rank: number }) {
             {roleLabel(member.role)}
           </p>
         </div>
-        <p className="shrink-0 font-mono text-sm tabular text-gold">{formatTrophies(member.trophies)}</p>
+        <p className="shrink-0 font-mono text-sm tabular text-gold">
+          {formatTrophies(member.trophies)}
+        </p>
       </Link>
     </li>
   );
@@ -196,24 +281,38 @@ function ActivityBlock({
       ) : (
         <ul className="flex flex-col gap-1.5">
           {events.slice(0, 12).map((ev) => (
-            <li key={ev.id} className="flex items-center gap-3 rounded-xl bg-surface px-3 py-2.5 text-sm">
+            <li
+              key={ev.id}
+              className="flex items-center gap-3 rounded-xl bg-surface px-3 py-2.5 text-sm"
+            >
               <KindIcon kind={ev.kind} />
               <div className="min-w-0 flex-1">
                 <p className="truncate text-fg">
                   {ev.kind === "join"
                     ? ev.roleTo
-                      ? t("club.event.joinLine", { name: ev.playerName, role: roleLabel(ev.roleTo) })
+                      ? t("club.event.joinLine", {
+                          name: ev.playerName,
+                          role: roleLabel(ev.roleTo),
+                        })
                       : t("club.event.joinLineNoRole", { name: ev.playerName })
                     : ev.kind === "leave"
                       ? ev.roleFrom
-                        ? t("club.event.leaveLine", { name: ev.playerName, role: roleLabel(ev.roleFrom) })
+                        ? t("club.event.leaveLine", {
+                            name: ev.playerName,
+                            role: roleLabel(ev.roleFrom),
+                          })
                         : t("club.event.leaveLineNoRole", { name: ev.playerName })
                       : `${ev.playerName} · ${roleLabel(ev.roleFrom)} → ${roleLabel(ev.roleTo)}`}
                 </p>
                 <p className="text-xs text-subtle">{formatRelative(ev.occurredAt)}</p>
               </div>
               {ev.kind !== "leave" ? (
-                <Link to="/m/$tag/" replace params={{ tag: ev.playerTag }} className="shrink-0 text-xs text-muted">
+                <Link
+                  to="/m/$tag/"
+                  replace
+                  params={{ tag: ev.playerTag }}
+                  className="shrink-0 text-xs text-muted"
+                >
                   {t("club.statsLink")}
                 </Link>
               ) : null}

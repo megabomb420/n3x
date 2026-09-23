@@ -19,6 +19,7 @@ export {
   battlesWithoutResult,
   inQueue,
   rangeStart,
+  recentBattles,
 } from "./stats";
 export type { ClubMeta, MetaQueue, MetaRow, StatsRange } from "./stats";
 
@@ -89,14 +90,23 @@ export async function loadMemberRanked(
       slice.map(async (tag, offset) => {
         const key = `ranked:${CACHE_TAG}:${tag}`;
         const hit = cacheGet<MemberRanked>(key);
-        if (hit && Date.now() - hit.savedAt < RANKED_TTL_MS) return { at: index + offset, value: hit.value };
+        if (hit && Date.now() - hit.savedAt < RANKED_TTL_MS)
+          return { at: index + offset, value: hit.value };
         try {
           const profile = await loadClubPlayer(tag);
-          const value: MemberRanked = { tag, elo: profile.rankedElo, rankName: profile.rankedRankName };
+          const value: MemberRanked = {
+            tag,
+            elo: profile.rankedElo,
+            rankName: profile.rankedRankName,
+          };
           cacheSet(key, value);
           return { at: index + offset, value };
         } catch {
-          const value: MemberRanked = { tag, elo: hit?.value.elo ?? null, rankName: hit?.value.rankName ?? null };
+          const value: MemberRanked = {
+            tag,
+            elo: hit?.value.elo ?? null,
+            rankName: hit?.value.rankName ?? null,
+          };
           return { at: index + offset, value };
         }
       }),

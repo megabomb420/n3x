@@ -3,28 +3,42 @@
  * global numbers for it, and what this club has actually done on it.
  *
  * The official API publishes no global win or pick rates at all, so the global
- * block is the publisher's own reading — one population, no trophy split — and
- * says so. The club block below it is facts from the members' own logs.
+ * part is the publisher's own reading — one population, no trophy split — and
+ * says so. Its table is shown in the publisher's own order, which is that map's
+ * ranking, with the publisher's overall tier next to each name as a badge: the
+ * tiers are not map-specific, and grouping by them buried the best brawlers for
+ * the map in the middle of the list.
  */
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
 import { ChevronLeft } from "lucide-react";
 import { useMemo, useState } from "react";
 import { battlesOnMap, battlesWithoutResult, loadClubLogs } from "@/lib/club/stats-loader";
-import { useT } from "@/lib/i18n/provider";
-import { loadMapStats } from "@/lib/maps/map-stats";
+import { useT, type StringKey } from "@/lib/i18n/provider";
+import { loadMapStats, type MapStatBucket } from "@/lib/maps/map-stats";
 import { findMapEvent, formatWindow, loadRotation } from "@/lib/maps/rotation";
 import { findBrawler, findMap, loadCatalog } from "@/lib/meta/brawlapi";
-import { formatPicks, formatRelative } from "@/lib/meta/format";
+import { formatPicks } from "@/lib/meta/format";
 import { displayBrawlerName, titleCaseMode } from "@/lib/meta/names";
-import { groupTiers } from "@/lib/meta/tier-board";
 import { useOnline } from "@/hooks/use-online";
-import { cn } from "@/lib/utils";
+import { BattleRow } from "./battle-row";
 import { MapArt } from "./map-art";
 import { MapPicture } from "./map-picture";
 import { Portrait } from "./portrait";
 import { RateBar } from "./stat-rows";
 import { EmptyState, ErrorState, OfflineBanner, SkeletonRows } from "./state-views";
+
+/** How many of our own battles the map's page lists. */
+const RECENT = 12;
+
+/** The publisher's four lists, in its own words, as keys we can translate. */
+const BUCKET_KEYS: Record<MapStatBucket["kind"], StringKey | null> = {
+  picks: "map.bucket.picks",
+  winners: "map.bucket.winners",
+  mostUsed: "map.bucket.mostUsed",
+  notRecommended: "map.bucket.notRecommended",
+  other: null,
+};
 
 export function MapScreen({ map }: { map: string }) {
   const t = useT();
@@ -48,7 +62,7 @@ export function MapScreen({ map }: { map: string }) {
 
   const bundle = logs.data;
   const recent = useMemo(
-    () => (bundle ? battlesOnMap(bundle.logs, map, 30).slice(0, 12) : []),
+    () => (bundle ? battlesOnMap(bundle.logs, map, 30).slice(0, RECENT) : []),
     [bundle, map],
   );
   const names = useMemo(
@@ -121,6 +135,7 @@ export function MapScreen({ map }: { map: string }) {
                 ? `${status.event.mode ? titleCaseMode(status.event.mode) : t("maps.modeUnknown")} · ${formatWindow(status.event.startTime, status.event.endTime, t)}`
                 : t("map.notLive")}
             </p>
+            <p className="mt-1 text-[11px] text-subtle">{t("map.pictureHint")}</p>
           </div>
         </button>
       </section>
@@ -149,53 +164,60 @@ export function MapScreen({ map }: { map: string }) {
               {global.stale ? ` · ${t("meta.noteStale")}` : ""}
             </p>
             <p className="mt-2 text-[11px] text-low">{t("map.noSplit")}</p>
-            <p className="mt-2 text-[11px] text-subtle">{t("map.tierNote")}</p>
           </section>
 
-          {groupTiers(global.rows).map((group) => (
-            <section key={group.tier}>
-              <h2 className="mb-1.5 flex items-baseline gap-2 font-display text-lg tracking-wide">
-                {group.tier}
-                <span className="text-xs text-subtle">{group.rows.length}</span>
-              </h2>
-              <ul className="flex flex-col gap-1.5">
-                {group.rows.map((row) => (
-                  <li
-                    key={row.name}
-                    className="flex items-center gap-2.5 rounded-xl bg-surface px-3 py-2"
-                  >
-                    <Portrait
-                      catalog={findBrawler(catalog, row.name.toUpperCase())}
-                      cubeName={row.name.toUpperCase()}
-                      size={32}
-                      decorative
-                    />
-                    <div className="min-w-0 flex-1">
-                      <p className="truncate text-sm text-fg">
-                        {displayBrawlerName(row.name.toUpperCase())}
-                      </p>
-                      <p className="truncate text-[10px] text-subtle">{row.role ?? ""}</p>
-                    </div>
-                    <RateBar rate={row.winRate / 100} className="w-16 shrink-0" />
-                    <div className="w-14 shrink-0 text-right">
-                      <p className="text-sm text-fg">{Math.round(row.winRate)}%</p>
-                      <p className="text-[10px] text-subtle">{metricLabel}</p>
-                    </div>
-                    <div className="w-14 shrink-0 text-right">
-                      <p className="text-xs text-muted">
-                        {row.useRate == null
-                          ? row.games == null
-                            ? "—"
-                            : formatPicks(row.games)
-                          : `${row.useRate}%`}
-                      </p>
-                      <p className="text-[10px] text-subtle">{secondaryLabel}</p>
-                    </div>
-                  </li>
-                ))}
-              </ul>
-            </section>
+          {global.buckets.map((bucket) => (
+            <BucketSection key={`${bucket.kind}-${bucket.title}`} bucket={bucket} />
           ))}
+
+          <section>
+            <div className="mb-1.5 flex items-baseline justify-between gap-3">
+              <h2 className="font-display text-lg tracking-wide">{t("map.table")}</h2>
+              <span className="shrink-0 text-[11px] text-subtle">
+                {t("meta.brawlersCount", { count: global.rows.length })}
+              </span>
+            </div>
+            <ul className="flex flex-col gap-1.5">
+              {global.rows.map((row) => (
+                <li
+                  key={row.name}
+                  className="flex items-center gap-2.5 rounded-xl bg-surface px-3 py-2"
+                >
+                  <Portrait
+                    catalog={findBrawler(catalog, row.name.toUpperCase())}
+                    cubeName={row.name.toUpperCase()}
+                    size={32}
+                    decorative
+                  />
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-sm text-fg">
+                      {displayBrawlerName(row.name.toUpperCase())}
+                      <span className="ml-1.5 rounded bg-surface-2 px-1 py-0.5 align-middle text-[10px] text-subtle">
+                        {row.tier}
+                      </span>
+                    </p>
+                    <p className="truncate text-[10px] text-subtle">{row.role ?? ""}</p>
+                  </div>
+                  <RateBar rate={row.winRate / 100} className="w-14 shrink-0" />
+                  <div className="w-12 shrink-0 text-right">
+                    <p className="text-sm text-fg">{Math.round(row.winRate)}%</p>
+                    <p className="text-[10px] text-subtle">{metricLabel}</p>
+                  </div>
+                  <div className="w-12 shrink-0 text-right">
+                    <p className="text-xs text-muted">
+                      {row.useRate == null
+                        ? row.games == null
+                          ? "—"
+                          : formatPicks(row.games)
+                        : `${row.useRate}%`}
+                    </p>
+                    <p className="text-[10px] text-subtle">{secondaryLabel}</p>
+                  </div>
+                </li>
+              ))}
+            </ul>
+            <p className="mt-1.5 text-[11px] leading-relaxed text-subtle">{t("map.tierNote")}</p>
+          </section>
         </>
       ) : null}
 
@@ -205,41 +227,12 @@ export function MapScreen({ map }: { map: string }) {
         <section>
           <h2 className="mb-1.5 font-display text-lg tracking-wide">{t("map.clubBattles")}</h2>
           <ul className="flex flex-col gap-1.5">
-            {recent.map(({ tag, battle }, i) => (
-              <li
-                key={`${tag}-${battle.timestamp}-${i}`}
-                className="rounded-xl bg-surface px-3 py-2.5"
-              >
-                <div className="flex items-center justify-between gap-2">
-                  <p
-                    className={cn(
-                      "text-sm font-medium",
-                      battle.victory === true
-                        ? "text-win"
-                        : battle.victory === false
-                          ? "text-danger"
-                          : "text-fg",
-                    )}
-                  >
-                    {battle.result ||
-                      (battle.victory === true
-                        ? t("member.victory")
-                        : battle.victory === false
-                          ? t("member.defeat")
-                          : t("member.battle"))}
-                  </p>
-                  <p className="text-xs text-subtle">{formatRelative(battle.timestamp)}</p>
-                </div>
-                <p className="mt-0.5 text-xs text-muted">
-                  {names.get(tag) ?? `#${tag}`}
-                  {battle.mode ? ` · ${titleCaseMode(battle.mode)}` : ""}
-                  {battle.brawler ? ` · ${displayBrawlerName(battle.brawler)}` : ""}
-                  {battle.ranked ? ` · ${t("stats.queue.ranked")}` : ""}
-                  {battle.trophyChange != null
-                    ? ` · ${battle.trophyChange > 0 ? "+" : ""}${battle.trophyChange}${battle.ranked ? " ELO" : ""}`
-                    : ""}
-                </p>
-              </li>
+            {recent.map(({ tag, battle }, index) => (
+              <BattleRow
+                key={`${tag}-${battle.timestamp}-${index}`}
+                battle={battle}
+                member={names.get(tag) ?? `#${tag}`}
+              />
             ))}
           </ul>
         </section>
@@ -263,5 +256,36 @@ export function MapScreen({ map }: { map: string }) {
         />
       ) : null}
     </div>
+  );
+}
+
+/** One of the publisher's four lists for this map. */
+function BucketSection({ bucket }: { bucket: MapStatBucket }) {
+  const t = useT();
+  const catalog = useQuery({ queryKey: ["catalog"], queryFn: loadCatalog }).data ?? null;
+  const key = BUCKET_KEYS[bucket.kind];
+  return (
+    <section>
+      <h2 className="mb-1.5 font-display text-lg tracking-wide">{key ? t(key) : bucket.title}</h2>
+      <ul className="flex flex-col gap-1.5">
+        {bucket.items.map((item) => (
+          <li key={item.name} className="flex items-center gap-2.5 rounded-xl bg-surface px-3 py-2">
+            <Portrait
+              catalog={findBrawler(catalog, item.name.toUpperCase())}
+              cubeName={item.name.toUpperCase()}
+              size={32}
+              decorative
+            />
+            <p className="min-w-0 flex-1 truncate text-sm text-fg">
+              {displayBrawlerName(item.name.toUpperCase())}
+            </p>
+            <p className="w-14 shrink-0 text-right text-sm text-fg">{Math.round(item.winRate)}%</p>
+            <p className="w-14 shrink-0 text-right text-xs text-muted">
+              {item.useRate == null ? "—" : `${item.useRate}%`}
+            </p>
+          </li>
+        ))}
+      </ul>
+    </section>
   );
 }

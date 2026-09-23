@@ -1,6 +1,13 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { LOW_SAMPLE, aggregateBattles, battlesOnMap, battlesWithoutResult, inQueue } from "./stats.ts";
+import {
+  LOW_SAMPLE,
+  aggregateBattles,
+  battlesOnMap,
+  battlesWithoutResult,
+  inQueue,
+  recentBattles,
+} from "./stats.ts";
 import type { PlayerBattle } from "./types.ts";
 
 function battle(overrides: Partial<PlayerBattle>): PlayerBattle {
@@ -29,12 +36,28 @@ test("club meta counts only competitive battles and splits the queues", () => {
         battle({ brawler: "NITA", result: "defeat", victory: false, trophyChange: -6 }),
         battle({ brawler: "SHELLY", type: "soloRanked", ranked: true, trophyChange: 80 }),
         battle({ brawler: "SHELLY", type: "friendly", competitive: false, trophyChange: 0 }),
-        battle({ brawler: "COLT", type: "", competitive: false, result: null, victory: null, trophyChange: null }),
+        battle({
+          brawler: "COLT",
+          type: "",
+          competitive: false,
+          result: null,
+          victory: null,
+          trophyChange: null,
+        }),
       ],
     },
     {
       tag: "BBB",
-      battles: [battle({ brawler: "NITA", type: "teamRanked", ranked: true, result: "defeat", victory: false, trophyChange: -40 })],
+      battles: [
+        battle({
+          brawler: "NITA",
+          type: "teamRanked",
+          ranked: true,
+          result: "defeat",
+          victory: false,
+          trophyChange: -40,
+        }),
+      ],
     },
   ];
 
@@ -138,7 +161,13 @@ test("a map filter narrows the club to one map, and to the members who played it
       tag: "AAA",
       battles: [
         battle({ map: "Triple Dribble", brawler: "NITA" }),
-        battle({ map: "Triple Dribble", brawler: "COLT", result: "defeat", victory: false, trophyChange: -4 }),
+        battle({
+          map: "Triple Dribble",
+          brawler: "COLT",
+          result: "defeat",
+          victory: false,
+          trophyChange: -4,
+        }),
         battle({ map: "Beach Ball", brawler: "SHELLY" }),
       ],
     },
@@ -153,10 +182,7 @@ test("a map filter narrows the club to one map, and to the members who played it
     one.maps.map((row) => row.name),
     ["Triple Dribble"],
   );
-  assert.deepEqual(
-    one.brawlers.map((row) => row.name).sort(),
-    ["COLT", "NITA"],
-  );
+  assert.deepEqual(one.brawlers.map((row) => row.name).sort(), ["COLT", "NITA"]);
 
   const none = aggregateBattles(logs, "all", { map: "Not A Map" });
   assert.equal(none.battles, 0);
@@ -170,8 +196,18 @@ test("one map's battles come back newest first, friendlies and draws left out", 
       battles: [
         battle({ map: "Beach Ball", timestamp: "2026-09-22T10:00:00.000Z" }),
         battle({ map: "Beach Ball", timestamp: "2026-09-22T18:00:00.000Z" }),
-        battle({ map: "Beach Ball", timestamp: "2026-09-22T14:00:00.000Z", type: "friendly", competitive: false }),
-        battle({ map: "Beach Ball", timestamp: "2026-09-22T16:00:00.000Z", result: null, victory: null }),
+        battle({
+          map: "Beach Ball",
+          timestamp: "2026-09-22T14:00:00.000Z",
+          type: "friendly",
+          competitive: false,
+        }),
+        battle({
+          map: "Beach Ball",
+          timestamp: "2026-09-22T16:00:00.000Z",
+          result: null,
+          victory: null,
+        }),
         battle({ map: "Triple Dribble", timestamp: "2026-09-22T20:00:00.000Z" }),
       ],
     },
@@ -187,7 +223,11 @@ test("one map's battles come back newest first, friendlies and draws left out", 
     rows.map((row) => row.tag),
     ["AAA", "BBB", "AAA"],
   );
-  assert.equal(battlesOnMap(logs, "Beach Ball", 1).length, 1, "the limit is applied after the sort");
+  assert.equal(
+    battlesOnMap(logs, "Beach Ball", 1).length,
+    1,
+    "the limit is applied after the sort",
+  );
   assert.equal(battlesOnMap(logs, "Not A Map").length, 0);
   assert.equal(
     battlesWithoutResult(logs, "Beach Ball"),
@@ -195,6 +235,56 @@ test("one map's battles come back newest first, friendlies and draws left out", 
     "the Showdown-style game with no published result is counted separately, and the friendly is not",
   );
   assert.equal(battlesWithoutResult(logs, "Triple Dribble"), 0);
+});
+
+test("the club's own feed is the newest competitive battles across every member", () => {
+  const logs = [
+    {
+      tag: "AAA",
+      battles: [
+        battle({ timestamp: "2026-09-22T12:00:00.000Z" }),
+        battle({ timestamp: "2026-09-22T18:00:00.000Z", brawler: "COLT" }),
+        battle({ timestamp: "2026-09-22T20:00:00.000Z", type: "friendly", competitive: false }),
+      ],
+    },
+    {
+      tag: "BBB",
+      battles: [
+        battle({
+          timestamp: "2026-09-22T19:00:00.000Z",
+          type: "soloRanked",
+          ranked: true,
+          result: null,
+          victory: null,
+        }),
+        battle({ timestamp: "not a date" }),
+      ],
+    },
+  ];
+
+  const rows = recentBattles(logs, 25);
+  assert.deepEqual(
+    rows.map((row) => row.battle.timestamp),
+    [
+      "2026-09-22T19:00:00.000Z",
+      "2026-09-22T18:00:00.000Z",
+      "2026-09-22T12:00:00.000Z",
+      "not a date",
+    ],
+    "newest first, a friendly left out, an unreadable timestamp last rather than first",
+  );
+  assert.deepEqual(
+    rows.map((row) => row.tag),
+    ["BBB", "AAA", "AAA", "BBB"],
+    "each row names the member whose log it came from",
+  );
+  assert.equal(
+    rows[0].battle.result,
+    null,
+    "a Showdown game is still a battle the club played; it just published no win or loss",
+  );
+  assert.equal(recentBattles(logs, 2).length, 2, "the limit is applied after the sort");
+  assert.deepEqual(recentBattles([], 25), []);
 });
 
 test("the queue predicate is the one rule every club screen shares", () => {

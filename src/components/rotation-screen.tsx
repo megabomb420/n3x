@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import { useState } from "react";
+import { Link } from "@tanstack/react-router";
 import { Clock } from "lucide-react";
 import { formatWindow, loadRotation, type RotationEvent } from "@/lib/maps/rotation";
 import { findMap, loadCatalog } from "@/lib/meta/brawlapi";
@@ -8,14 +8,12 @@ import { titleCaseMode } from "@/lib/meta/names";
 import { useT } from "@/lib/i18n/provider";
 import { useOnline } from "@/hooks/use-online";
 import { MapArt } from "./map-art";
-import { MapPicture } from "./map-picture";
 import { EmptyState, ErrorState, OfflineBanner, SkeletonRows } from "./state-views";
 
 /** The live event rotation from the `n3x-api` Worker (`GET /maps`). */
 export function RotationScreen() {
   const t = useT();
   const online = useOnline();
-  const [open, setOpen] = useState<{ event: RotationEvent; live: boolean } | null>(null);
   const query = useQuery({
     queryKey: ["rotation"],
     queryFn: loadRotation,
@@ -43,21 +41,10 @@ export function RotationScreen() {
         <EmptyState title={t("maps.noEvents.title")} body={t("maps.noEvents.body")} />
       ) : null}
       {active.length > 0 ? (
-        <RotationSection
-          title={t("maps.active")}
-          events={active}
-          catalog={catalog}
-          live
-          onOpen={setOpen}
-        />
+        <RotationSection title={t("maps.active")} events={active} catalog={catalog} live />
       ) : null}
       {upcoming.length > 0 ? (
-        <RotationSection
-          title={t("maps.upcoming")}
-          events={upcoming}
-          catalog={catalog}
-          onOpen={setOpen}
-        />
+        <RotationSection title={t("maps.upcoming")} events={upcoming} catalog={catalog} />
       ) : null}
 
       {data ? (
@@ -65,16 +52,6 @@ export function RotationScreen() {
           <Clock className="size-3" />
           {t("maps.note", { when: formatRelative(data.updatedAt) })}
         </p>
-      ) : null}
-
-      {open ? (
-        <MapPicture
-          map={open.event.map}
-          art={findMap(catalog, open.event.map, open.event.mode)}
-          event={open.event}
-          live={open.live}
-          onClose={() => setOpen(null)}
-        />
       ) : null}
     </div>
   );
@@ -84,13 +61,11 @@ function RotationSection({
   events,
   catalog,
   live = false,
-  onOpen,
 }: {
   title: string;
   events: RotationEvent[];
   catalog: Awaited<ReturnType<typeof loadCatalog>> | null;
   live?: boolean;
-  onOpen: (status: { event: RotationEvent; live: boolean }) => void;
 }) {
   const t = useT();
   return (
@@ -132,15 +107,11 @@ function RotationSection({
               key={`${i}-${event.slot}-${event.mode}-${event.map}`}
               className="overflow-hidden rounded-2xl bg-surface shadow-[var(--shadow-border)]"
             >
-              {/* An event with no map name has nothing to open, so only a named one is a button. */}
+              {/* An event with no map name has nothing to open, so only a named one is a link. */}
               {event.map.length > 0 ? (
-                <button
-                  type="button"
-                  onClick={() => onOpen({ event, live })}
-                  className="block w-full text-left"
-                >
+                <Link to="/maps/$map/" params={{ map: event.map }} className="block">
                   {card}
-                </button>
+                </Link>
               ) : (
                 card
               )}
