@@ -26,7 +26,6 @@ const TYPE_KEYS: Record<string, StringKey> = {
 
 export function ClubScreen() {
   const t = useT();
-  const roleLabel = useRoleLabel();
   const online = useOnline();
   const [q, setQ] = useState("");
   const query = useQuery({
@@ -37,7 +36,15 @@ export function ClubScreen() {
 
   const club = query.data?.club;
   const events = query.data?.events ?? [];
-  const members = club?.members ?? [];
+  // The roster is a ladder, so it reads by trophies. The board below is the one
+  // that sorts by Elo.
+  const members = useMemo(
+    () =>
+      [...(club?.members ?? [])].sort(
+        (a, b) => b.trophies - a.trophies || a.name.localeCompare(b.name),
+      ),
+    [club?.members],
+  );
   const logs = useQuery({
     queryKey: ["club-logs"],
     queryFn: loadClubLogs,
@@ -218,16 +225,31 @@ function Stat({ label, value }: { label: string; value: string }) {
   );
 }
 
+/**
+ * The leadership, each in its own quiet colour: a left edge on the row, a tint
+ * this faint, and the role word itself. Nothing louder — the roster is 28 rows
+ * and shouting on three of them would read as noise, not as rank.
+ */
+const ROLE_STYLE: Record<string, { edge: string; tint: string; text: string }> = {
+  president: { edge: "border-l-gold", tint: "bg-gold/[0.07]", text: "text-gold" },
+  vicePresident: { edge: "border-l-ranked", tint: "bg-ranked/[0.07]", text: "text-ranked" },
+  senior: { edge: "border-l-win", tint: "bg-win/[0.07]", text: "text-win" },
+};
+
 function MemberRow({ member, rank }: { member: ClubMember; rank: number }) {
   const roleLabel = useRoleLabel();
   const color = nameColorToCss(member.nameColor);
+  const role = ROLE_STYLE[member.role] ?? null;
   return (
     <li>
       <Link
         to="/m/$tag/"
         replace
         params={{ tag: member.tag }}
-        className="flex min-h-14 items-center gap-3 rounded-xl bg-surface px-3 py-2 transition-transform duration-150 ease-out active:scale-[0.98]"
+        className={cn(
+          "flex min-h-14 items-center gap-3 rounded-xl border-l-[3px] px-3 py-2 transition-transform duration-150 ease-out active:scale-[0.98]",
+          role ? `${role.edge} ${role.tint}` : "border-l-transparent bg-surface",
+        )}
       >
         <span className="w-5 shrink-0 text-center font-mono text-xs tabular text-subtle">
           {rank || "–"}
@@ -237,14 +259,7 @@ function MemberRow({ member, rank }: { member: ClubMember; rank: number }) {
           <p className="truncate font-medium" style={color ? { color } : undefined}>
             {member.name}
           </p>
-          <p
-            className={cn(
-              "text-xs",
-              member.role === "president" || member.role === "vicePresident"
-                ? "text-gold"
-                : "text-subtle",
-            )}
-          >
+          <p className={cn("text-xs", role ? role.text : "text-subtle")}>
             {roleLabel(member.role)}
           </p>
         </div>
