@@ -345,19 +345,20 @@ function MemberList({
       <div className="mb-1 flex items-center gap-3 px-3 text-[10px] uppercase tracking-wider text-subtle">
         <span className="w-9 shrink-0" />
         <span className="flex-1" />
-        <span className="w-20 shrink-0 text-right">{t("stats.trophies")}</span>
+        <span className="w-24 shrink-0 text-right">{elo ? t("stats.tier") : t("stats.trophies")}</span>
         <span className="w-16 shrink-0 text-right">ELO</span>
       </div>
       <ul className="flex flex-col gap-1.5">
         {rows.map(({ member, battles, winRate, change, changeKnown }) => {
           const standing = ranked?.find((entry) => entry.tag === member.tag) ?? null;
+          const tier = standing?.rankName ?? (loading ? "…" : "—");
           return (
             <li key={member.tag} className="flex items-center gap-3 rounded-xl bg-surface px-3 py-2">
               <PlayerIcon src={member.iconUrl} name={member.name} size={36} />
               <div className="min-w-0 flex-1">
                 <div className="flex items-baseline gap-1.5">
                   <p className="truncate text-sm text-fg">{member.name}</p>
-                  {standing?.rankName ? (
+                  {standing?.rankName && !elo ? (
                     <span className="shrink-0 text-[10px] tracking-wide text-gold">{standing.rankName}</span>
                   ) : null}
                 </div>
@@ -366,17 +367,22 @@ function MemberList({
                   {battles > 0 ? ` · ${battles} ${t("stats.battlesShort")} · ${pct(winRate)}` : ""}
                 </p>
               </div>
-              <div className="w-20 shrink-0 text-right">
-                <p className="tabular text-sm text-fg">{formatTrophies(member.trophies)}</p>
-                {elo ? null : (
-                  <p
-                    className={cn(
-                      "tabular text-[10px]",
-                      changeKnown === 0 ? "text-subtle" : change >= 0 ? "text-win" : "text-danger",
-                    )}
-                  >
-                    {changeKnown === 0 ? "—" : signed(change)}
-                  </p>
+              <div className="w-24 shrink-0 text-right">
+                {/* Ranked is a tier, not a number: MYTHIC I, SILVER II… */}
+                {elo ? (
+                  <p className="truncate text-xs text-fg">{tier}</p>
+                ) : (
+                  <>
+                    <p className="tabular text-sm text-fg">{formatTrophies(member.trophies)}</p>
+                    <p
+                      className={cn(
+                        "tabular text-[10px]",
+                        changeKnown === 0 ? "text-subtle" : change >= 0 ? "text-win" : "text-danger",
+                      )}
+                    >
+                      {changeKnown === 0 ? "—" : signed(change)}
+                    </p>
+                  </>
                 )}
               </div>
               <div className="w-16 shrink-0 text-right">

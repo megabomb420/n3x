@@ -85,11 +85,12 @@ export const STRINGS = {
     "stats.wins": "Wins",
     "stats.members": "Members",
     "stats.trophies": "Trophies",
+    "stats.tier": "Tier",
     "stats.battlesShort": "battles",
     "stats.members.note":
       "Sorted by what they gained in this window — trophies from ladder battles. In the Ranked queue the list sorts by current Elo instead, because Ranked battles publish no delta.",
     "stats.legend.members":
-      "Members — the left number is their trophies now, with the window's gain under it (trophies from ladder battles; Ranked publishes no delta, so that line is hidden there). The right one is their current Ranked Elo and tier, read from their own profile (a dash means the profile did not answer).",
+      "Members — in the Ladder and All queues the left column is their trophies now, with the window's gain under it (trophies from ladder battles; Ranked publishes no delta). In the Ranked queue that column is their tier instead — MYTHIC I, SILVER II — and the right one is their current Ranked Elo; both come from their own profile, and a dash means the profile did not answer.",
     "stats.role": "Role",
     "stats.window": "Window",
     "stats.brawlers": "Brawlers",
@@ -274,11 +275,12 @@ export const STRINGS = {
     "stats.wins": "Wygrane",
     "stats.members": "Członkowie",
     "stats.trophies": "Puchary",
+    "stats.tier": "Ranga",
     "stats.battlesShort": "bitew",
     "stats.members.note":
       "Sortowani po tym, ile wbili w tym zakresie — puchary z bitew pucharowych. W kolejce rankingowej lista sortuje się po aktualnym Elo, bo bitwy rankingowe nie publikują zmiany.",
     "stats.legend.members":
-      "Członkowie — liczba po lewej to puchary teraz, a pod nią bilans z zakresu (puchary z bitew pucharowych; rankingowe nie publikują zmiany, więc ta linia jest tam ukryta). Po prawej aktualne Elo w Ranked i tier z własnego profilu (myślnik oznacza, że profil nie odpowiedział).",
+      "Członkowie — w kolejkach pucharowej i „Wszystkie” lewa kolumna to puchary teraz, a pod nią bilans z zakresu (puchary z bitew pucharowych; rankingowe nie publikują zmiany). W kolejce rankingowej ta kolumna pokazuje rangę — MYTHIC I, SILVER II — a prawa aktualne Elo w Ranked; jedno i drugie pochodzi z własnego profilu, a myślnik oznacza, że profil nie odpowiedział.",
     "stats.role": "Rola",
     "stats.window": "Okres",
     "stats.brawlers": "Zadymiarze",
