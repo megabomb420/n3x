@@ -141,6 +141,8 @@ The owner sent a screenshot of the club tab with the info card sitting ~12 px be
 
 Chosen behaviour (the owner picked it from three options): the column stays where it is and only the hint pill moves. `app-shell.tsx` no longer puts a transform on `<main>`; the pill keeps its own `translateY(min(offset, 44) - 26)`, which is clipped above the column at rest and slides in as the pull grows. Verified with a synthetic touch sequence on the deployed host: card top minus header bottom is **0 px** at rest, during a 140 px drag and while the refresh that the drag triggered was running, and the pill reaches opacity 1.00 during the pull and returns to 0.00 when the refresh settles.
 
+**The step under the line belongs to the shell.** The owner first asked for the club card to sit exactly under the header line, then for a step between it and the line, then for that step on every tab. So `<main>` carries `pt-3` and no screen adds its own padding: measured 12 px between the header's bottom and the first block on all six tabs (`/`, `/stats/`, `/meta/`, `/ladder/`, `/maps/`, `/settings/`) plus a member page and a map's own page. Nothing else in the shell changed — the pull-to-refresh pill still lives above the column and slides in.
+
 ## History
 
 ### Original handoff (22 Sep 2026): the published site did not load club or meta

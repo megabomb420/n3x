@@ -194,7 +194,7 @@ export function AppShell({
           </span>
         </div>
 
-        <main ref={mainRef} className="h-full overflow-y-auto overscroll-contain pb-3">
+        <main ref={mainRef} className="h-full overflow-y-auto overscroll-contain pb-3 pt-3">
           {children}
         </main>
       </div>

@@ -94,7 +94,7 @@ export function ClubScreen() {
         : t("club.rankPlNone");
 
   return (
-    <div className="flex flex-col gap-3 px-3 pt-3">
+    <div className="flex flex-col gap-3 px-3">
       {!online ? <OfflineBanner stale={Boolean(query.data)} /> : null}
       {query.isLoading ? <SkeletonRows count={8} /> : null}
       {query.isError && !query.data ? (
