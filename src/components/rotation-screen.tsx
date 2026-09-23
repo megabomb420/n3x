@@ -1,6 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { Clock, Map } from "lucide-react";
 import { apiGet } from "@/lib/api/client";
+import { findMap, loadCatalog } from "@/lib/meta/brawlapi";
 import { formatRelative } from "@/lib/meta/format";
 import { titleCaseMode } from "@/lib/meta/names";
 import { useT } from "@/lib/i18n/provider";
@@ -30,6 +31,7 @@ export function RotationScreen() {
     queryKey: ["rotation"],
     queryFn: () => apiGet<RotationPayload>("/maps"),
   });
+  const catalog = useQuery({ queryKey: ["catalog"], queryFn: loadCatalog }).data ?? null;
 
   const data = query.data;
   const active = data?.active ?? [];
@@ -51,9 +53,8 @@ export function RotationScreen() {
       {data && active.length === 0 && upcoming.length === 0 ? (
         <EmptyState title={t("maps.noEvents.title")} body={t("maps.noEvents.body")} />
       ) : null}
-
-      {active.length > 0 ? <RotationSection title={t("maps.active")} events={active} live /> : null}
-      {upcoming.length > 0 ? <RotationSection title={t("maps.upcoming")} events={upcoming} /> : null}
+      {active.length > 0 ? <RotationSection title={t("maps.active")} events={active} catalog={catalog} live /> : null}
+      {upcoming.length > 0 ? <RotationSection title={t("maps.upcoming")} events={upcoming} catalog={catalog} /> : null}
 
       {data ? (
         <p className="flex items-center gap-1 text-[11px] text-subtle">
@@ -64,14 +65,15 @@ export function RotationScreen() {
     </div>
   );
 }
-
 function RotationSection({
   title,
   events,
+  catalog,
   live = false,
 }: {
   title: string;
   events: RotationEvent[];
+  catalog: Awaited<ReturnType<typeof loadCatalog>> | null;
   live?: boolean;
 }) {
   const t = useT();
@@ -81,30 +83,45 @@ function RotationSection({
         <h2 className="font-display text-lg tracking-wide">{title}</h2>
         <span className="text-xs text-subtle">{events.length}</span>
       </div>
-      <ul className="flex flex-col gap-1.5">
-        {events.map((event, i) => (
-          <li
-            key={`${i}-${event.slot}-${event.mode}-${event.map}`}
-            className="flex min-h-14 items-center gap-3 rounded-xl bg-surface px-3 py-2"
-          >
-            <span
-              className={cn(
-                "flex size-8 shrink-0 items-center justify-center rounded-md bg-surface-2",
-                live ? "text-win" : "text-subtle",
-              )}
+      <ul className="flex flex-col gap-2">
+        {events.map((event, i) => {
+          const art = findMap(catalog, event.map);
+          return (
+            <li
+              key={`${i}-${event.slot}-${event.mode}-${event.map}`}
+              className="overflow-hidden rounded-2xl bg-surface shadow-[var(--shadow-border)]"
             >
-              <Map className="size-3.5" />
-            </span>
-            <div className="min-w-0 flex-1">
-              <p className="truncate font-medium">{event.map || t("maps.mapUnknown")}</p>
-              <p className="truncate text-xs text-subtle">
-                {event.mode ? titleCaseMode(event.mode) : t("maps.modeUnknown")}
-                <span aria-hidden> · </span>
-                <span className="tabular">{formatWindow(event.startTime, event.endTime)}</span>
-              </p>
-            </div>
-          </li>
-        ))}
+              <div className="relative aspect-[2/1] bg-surface-2">
+                {art?.imageUrl ? (
+                  <img
+                    src={art.imageUrl}
+                    alt=""
+                    className="bleed h-full w-full object-cover"
+                    loading="lazy"
+                    decoding="async"
+                  />
+                ) : (
+                  <div className="flex h-full items-center justify-center text-subtle">
+                    <Map className="size-6" />
+                  </div>
+                )}
+                <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/85 via-black/40 to-transparent px-3 pb-2.5 pt-10">
+                  <p className="truncate font-medium text-white">{event.map || t("maps.mapUnknown")}</p>
+                  <p className="truncate text-xs text-white/75">
+                    {event.mode ? titleCaseMode(event.mode) : t("maps.modeUnknown")}
+                    <span aria-hidden> · </span>
+                    <span className="tabular">{formatWindow(event.startTime, event.endTime)}</span>
+                  </p>
+                </div>
+                {live ? (
+                  <span className="absolute right-2 top-2 rounded-full bg-win px-2 py-0.5 text-[10px] font-medium text-bg">
+                    LIVE
+                  </span>
+                ) : null}
+              </div>
+            </li>
+          );
+        })}
       </ul>
     </section>
   );

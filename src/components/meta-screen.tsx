@@ -195,43 +195,51 @@ function TierDetail({ row, catalog }: { row: TierRow; catalog: Catalog | null })
   );
 }
 
+function videoThumb(video: { videoId: string; thumbnailUrl: string }): string {
+  return video.videoId ? `https://i.ytimg.com/vi/${video.videoId}/hqdefault.jpg` : video.thumbnailUrl;
+}
+
 function CreatorLinks({ channels, loading }: { channels: CreatorFeed[]; loading: boolean }) {
   const t = useT();
   return (
     <section>
       <h2 className="font-display text-lg tracking-wide">{t("meta.creators")}</h2>
       <p className="mt-0.5 text-[11px] text-subtle">{t("meta.creatorsHint")}</p>
-      {loading && channels.length === 0 ? <SkeletonRows count={4} /> : null}
-      <ul className="mt-2 flex flex-col gap-1.5">
+      {loading && channels.length === 0 ? <SkeletonRows count={3} /> : null}
+      <ul className="mt-2 flex flex-col gap-2">
         {channels.map((channel) => {
           const lead = pickLeadVideo(channel.entries, "tierLists");
           return (
-            <li key={channel.id} className="rounded-xl bg-surface px-3 py-2">
-              <a
-                href={channel.channelUrl}
-                target="_blank"
-                rel="noreferrer"
-                className="flex min-h-6 items-center justify-between gap-2 text-sm text-fg"
-              >
-                <span className="truncate">
-                  {channel.name}
-                  <span className="ml-1.5 text-xs text-subtle">{channel.handle}</span>
-                </span>
-                <ExternalLink className="size-3.5 shrink-0 text-subtle" />
-              </a>
+            <li key={channel.id} className="overflow-hidden rounded-2xl bg-surface shadow-[var(--shadow-border)]">
               {lead ? (
-                <a
-                  href={lead.watchUrl}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="mt-0.5 block truncate text-[11px] text-muted underline"
-                >
-                  {lead.title}
+                <a href={lead.watchUrl} target="_blank" rel="noreferrer" className="block">
+                  <img
+                    src={videoThumb(lead)}
+                    alt=""
+                    className="bleed aspect-video w-full object-cover"
+                    loading="lazy"
+                    decoding="async"
+                  />
+                  <div className="px-3 py-2">
+                    <p className="truncate text-sm text-fg">
+                      {channel.name}
+                      <span className="ml-1.5 text-xs text-subtle">{channel.handle}</span>
+                    </p>
+                    <p className="mt-0.5 line-clamp-2 text-[12px] leading-snug text-muted">{lead.title}</p>
+                  </div>
                 </a>
               ) : (
-                <p className="mt-0.5 truncate text-[11px] text-subtle">
-                  {channel.error ? t("meta.feedUnavailable") : t("meta.noTierUpload")}
-                </p>
+                <a href={channel.channelUrl} target="_blank" rel="noreferrer" className="flex items-center gap-3 px-3 py-3">
+                  <span className="flex size-12 shrink-0 items-center justify-center rounded-xl bg-surface-2 text-subtle">
+                    <ExternalLink className="size-4" />
+                  </span>
+                  <span className="min-w-0">
+                    <span className="block truncate text-sm text-fg">{channel.name}</span>
+                    <span className="block truncate text-[11px] text-subtle">
+                      {channel.error ? t("meta.feedUnavailable") : t("meta.noTierUpload")}
+                    </span>
+                  </span>
+                </a>
               )}
             </li>
           );

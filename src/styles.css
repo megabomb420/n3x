@@ -77,7 +77,7 @@
     text-wrap: pretty;
   }
 
-  img:not(.mark) {
+  img:not(.mark):not(.bleed) {
     outline: 1px solid rgb(255 255 255 / 0.08);
     outline-offset: -1px;
   }
