@@ -98,6 +98,16 @@ The ladder payload and loader moved to `src/lib/ladder/rows.ts` because two scre
 
 Verified: `npm run typecheck` clean, 208 script + 77 TypeScript tests pass, `npm run build:pages` prerenders 16 pages, eslint clean on the touched files; browser checks at 390x844 on the dev server (all four behaviours above, measured), then both hosts redeployed.
 
+## A brawler row says what it means (23 Sep 2026)
+
+The owner read "P11 · Ranga 6 · HC" on a member page and had no idea what it was — and "Ranga" in particular collides with the Ranked league the same page shows in its tiles. The row now spells the four figures out, with a one-line legend under the heading:
+
+> Power level 11 · Brawler rank 7 · Hypercharge · Prestige 3
+
+`member.brawlersHint` explains them where they are read: power level = upgrades (1-11); brawler rank = the trophy milestones reached *with that brawler*, explicitly not the Ranked league; hypercharge = unlocked; prestige = progress past 1,000 trophies. The words are the game's own, taken from Supercell's Polish support pages — **Poziom mocy**, **Ranga Zadymiarza**, **Hiperdoładowanie**, **Prestiż** — so the Polish side reads like the game rather than like a spreadsheet. `member.rank` ("Rank {rank}") is gone with the abbreviation it labelled.
+
+Prestige was not in the app at all. The official API publishes `brawlers[].prestigeLevel`, so `mapPlayer` now maps it and the row shows it only when it is above zero — a brawler without prestige reads as none, never as an invented level. Verified against the live payload after deploying the Worker (`d1086c27`): one member's 106 brawlers all carry it (Wendy power 11, rank 7, prestige 3, 3,001 trophies), and the worker test's fixture asserts both the published value and the absent one.
+
 ## History
 
 ### Original handoff (22 Sep 2026): the published site did not load club or meta
