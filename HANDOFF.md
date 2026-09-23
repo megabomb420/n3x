@@ -8,9 +8,9 @@ Live on free hosting, with nothing of the owner's running:
 
 - https://n3x-dk5.pages.dev — Cloudflare Pages, root base
 - https://megabomb420.github.io/n3x/ — GitHub Pages under `/n3x/`, published by `.github/workflows/pages.yml` on every push to `main`
-- https://n3x-api.whip-blanket.workers.dev — the backend Worker; `/health` says whether its API key is configured. Surface: `GET /club`, `/player/<tag>`, `/battles/<tag>`, `/ladder?type=players|clubs`, `/maps`, `/creators`, `/creators/<id>`, and the guarded `/__warm?index=N`.
+- https://n3x-api.whip-blanket.workers.dev — the backend Worker; `/health` says whether its API key is configured. Surface: `GET /club`, `/player/<tag>`, `/battles/<tag>`, `/ladder?type=players|clubs&country=…`, `/maps`, `/tier-list?scope=overall|ranked`, `/creators`, `/creators/<id>`, and the guarded `/__warm?index=N`.
 
-Five tabs: **Club** (roster, member pages, join/leave in KV), **Stats** (the club's own battle logs), **Meta** (creator uploads from public YouTube feeds), **Ladder** (official leaderboards) and **Maps** (live rotation). Club, player, ladder and map data come from the official Brawl Stars API through the Worker; nothing reads Brawl Time Ninja any more. `BRAWL_API_KEY` and `REGISTER_KEY` are set as Worker secrets — the API key belongs to the owner and its Supercell-side allowlist points at RoyaleAPI's proxy address.
+Five tabs: **Club** (roster, member pages, join/leave in KV), **Stats** (the club's own battle logs, or one member's, inside a time range saved on the device), **Meta** (a published S+–D tier list from BrawlMetrics, re-read about every 15 minutes by the Worker cron — not a snapshot baked into the app — plus links to the creator channels), **Ladder** (official leaderboards for a region saved on the device) and **Maps** (live rotation). Club, player, ladder and map data come from the official Brawl Stars API through the Worker; the tier list is parsed from BrawlMetrics' public table; creator links come from public YouTube feeds. Nothing reads Brawl Time Ninja any more. `BRAWL_API_KEY` and `REGISTER_KEY` are set as Worker secrets — the API key belongs to the owner and its Supercell-side allowlist points at RoyaleAPI's proxy address.
 
 The old Grok/Vercel copy at https://n3x.grok.me/ is superseded and still serves its stale build; nothing points at it. Issue #1 (the original 403 report) carries the closing summary.
 
@@ -223,14 +223,16 @@ npm run typecheck                                   # tsc --noEmit
 npm test                                            # 61 TS tests pass; 18 sandbox tests in scripts/** fail on this machine
 curl -s https://n3x-api.whip-blanket.workers.dev/health   # {"ok":true,"key":true}
 curl -s "https://n3x-api.whip-blanket.workers.dev/creators/bobby?x=$RANDOM" | head -c 200   # entries, no error
+curl -s "https://n3x-api.whip-blanket.workers.dev/ladder?type=players&country=pl" | head -c 120   # 200 Polish rows
+curl -s "https://n3x-api.whip-blanket.workers.dev/tier-list?scope=overall" | head -c 180   # rows, tiers, source BrawlMetrics
 ```
 
 Then in a browser, on **both** hosts (`https://n3x-dk5.pages.dev` and `https://megabomb420.github.io/n3x/`):
 
 - Club shows 28 members and the trophy total; search filters them; a member page shows trophies, a Ranked Elo chip, the brawler count and recent battles.
-- Stats shows the club's own battle window with sample sizes and the "small sample" badges, and no invented global rates.
-- Meta shows seven channel cards with a thumbnail, a kind badge and recent uploads; a throttled channel says "showing the last reading from …" rather than going empty. Zero console errors.
-- Ladder shows 200 leaderboard rows with markup stripped; Maps shows the live rotation with times.
+- Stats has a player select (whole club or one member) and a range (7 / 14 / 30 days / all logs). Both are restored from local storage. Sample sizes stay visible; nothing invents a global rate.
+- Meta is a tier-list board (S+ through D, portraits in rows) with Overall / Ranked, a tap-to-inspect row, and a creator-link list under it — not video cards. Zero console errors.
+- Ladder has a region select, restored from local storage, and shows 200 rows for that region with markup stripped; Maps shows the live rotation with times.
 - A deep link (`/m/2JYGUQ2P8`) lands on the host's 404 fallback and boots the router.
 
 Deploying after a change: `npm run build` then

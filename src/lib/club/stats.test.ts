@@ -97,3 +97,30 @@ test("a small sample is visible as a small sample, and an unpublished change is 
   assert.equal(row?.changeKnown, 1, "only one of the two battles published a change");
   assert.equal(row?.trophyChange, 8, "the unpublished one is not silently counted as zero");
 });
+
+test("a member filter and a time range drop everyone and everything else", () => {
+  const logs = [
+    {
+      tag: "AAA",
+      battles: [
+        battle({ timestamp: "2026-09-22T12:00:00.000Z", brawler: "NITA" }),
+        battle({ timestamp: "2026-09-01T12:00:00.000Z", brawler: "COLT" }),
+      ],
+    },
+    {
+      tag: "BBB",
+      battles: [battle({ timestamp: "2026-09-22T12:00:00.000Z", brawler: "SHELLY" })],
+    },
+  ];
+  const now = Date.parse("2026-09-22T18:00:00.000Z");
+
+  const one = aggregateBattles(logs, "all", { tag: "AAA", sinceMs: now - 7 * 86_400_000 });
+  assert.equal(one.members, 1);
+  assert.equal(one.battles, 1);
+  assert.equal(one.brawlers[0]?.name, "NITA");
+  assert.equal(one.windowStart, "2026-09-22T12:00:00.000Z");
+
+  const missing = aggregateBattles(logs, "all", { tag: "ZZZ" });
+  assert.equal(missing.battles, 0);
+  assert.equal(missing.members, 0);
+});

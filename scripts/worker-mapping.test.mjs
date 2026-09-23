@@ -11,11 +11,13 @@ import {
   bareTag,
   classifyCreatorTitle,
   diffRoster,
+  ladderCountry,
   mapBattles,
   mapClub,
   mapPlayer,
   mapRanking,
   mapRotation,
+  parseBrawlMetricsTierList,
   parseCreatorFeed,
   plainName,
   tagPath,
@@ -276,6 +278,29 @@ test("the roster diff reports joins, leaves and role changes", () => {
   assert.deepEqual(kinds, ["join:CCC", "leave:BBB", "role:AAA"]);
   assert.equal(events.find((event) => event.kind === "role").roleFrom, "member");
   assert.equal(events.find((event) => event.kind === "role").roleTo, "president");
+});
+
+test("a ladder region is a two-letter code or global, nothing else", () => {
+  assert.equal(ladderCountry(null), "global");
+  assert.equal(ladderCountry(" PL "), "pl");
+  assert.equal(ladderCountry("global"), "global");
+  assert.equal(ladderCountry("../players"), null);
+  assert.equal(ladderCountry("poland"), null);
+  assert.equal(mapRanking("players", { items: [] }, "pl").country, "pl");
+});
+
+test("a published tier list is read from the table, and a promo page is not one", () => {
+  const html = `
+    <tr data-class="Support" data-winrate="67.6" data-userate="0.81">
+      <td><a class="tier-table-brawler" href="/brawlers/wendy"><span class="tier-table-avatar"></span>Wendy</a></td>
+      <td><span class="tier-badge tier-splus">S+</span></td>
+    </tr>
+    <tr data-class="Tank" data-winrate="nope" data-userate="1"><td>skipped</td></tr>
+    <tr><td>not a tier row</td></tr>`;
+  const rows = parseBrawlMetricsTierList(html);
+  assert.equal(rows.length, 1);
+  assert.deepEqual(rows[0], { name: "Wendy", tier: "S+", role: "Support", winRate: 67.6, useRate: 0.81 });
+  assert.deepEqual(parseBrawlMetricsTierList("<p>Join the channel</p>"), []);
 });
 
 test("tags and paths are normalised before they reach the API", () => {

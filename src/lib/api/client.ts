@@ -36,7 +36,7 @@ function messageFor(status: number, code: string, reason: string): string {
     return "Data source is not configured yet (the backend is missing its API key)";
   }
   if (code === "upstream-unreachable") return "The data source did not answer";
-  if (code === "too many requests") return "Too many requests — try again in a minute";
+  if (code === "tier-list-unavailable") return "The tier list source did not answer";
   if (status === 404) return "Not found";
   return `Data source unavailable (${status}${reason ? ` ${reason}` : ""})`;
 }

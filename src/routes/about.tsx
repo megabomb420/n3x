@@ -17,8 +17,9 @@ function AboutPage() {
           <p className="mt-2">
             This is an unofficial companion for Brawl Stars club <span className="text-fg">'N3X</span> (
             <span className="text-fg">#2JYGUQ2P8</span>). Club is the home tab: live roster, member
-            profiles and who joined or left. Stats counts the club's own battles, Meta collects what
-            the creators publish, Ladder shows the official global leaderboards and Maps the live
+            profiles and who joined or left. Stats counts the club's own battles, or one member's,
+            inside a chosen time range. Meta is a published tier list plus links to the creators.
+            Ladder shows the official leaderboards for a saved region and Maps the live
             event rotation.
           </p>
         </section>
@@ -26,7 +27,7 @@ function AboutPage() {
         <section>
           <h3 className="font-medium text-fg">Where the numbers come from</h3>
           <p className="mt-2">
-            Everything is read from the official{" "}
+            Club, player, battle, Ladder and Maps data is read from the official{" "}
             <a className="underline" href="https://developer.brawlstars.com" target="_blank" rel="noreferrer">
               Brawl Stars API
             </a>{" "}
@@ -34,7 +35,9 @@ function AboutPage() {
             for a minute and is the only party that talks to Supercell — the browser never sees a key.
             Official API keys are locked to the IP addresses that may use them, and a Worker has no
             fixed address, so the Worker calls the API through RoyaleAPI's public proxy and that
-            proxy's published addresses are the ones on the key.
+            proxy's published addresses are the ones on the key. The Meta board is the exception: it
+            is parsed from BrawlMetrics' published table, and the creator links come from public
+            YouTube feeds.
           </p>
         </section>
 
@@ -80,9 +83,9 @@ function AboutPage() {
           <h3 className="font-medium text-fg">Ladder, Maps, Stats and Meta</h3>
           <ul className="mt-2 list-disc space-y-1 pl-5">
             <li>
-              <span className="text-fg">Ladder:</span> the official global leaderboards — the top 200
-              players or clubs, with trophies and club names, exactly as the API returns them. Rank
-              order is never re-sorted.
+              <span className="text-fg">Ladder:</span> the official leaderboards — the top 200 players
+              or clubs for a region, with trophies and club names, exactly as the API returns them.
+              Rank order is never re-sorted. The region is remembered on this device.
             </li>
             <li>
               <span className="text-fg">Maps:</span> the live event rotation — what is running now and
@@ -90,21 +93,22 @@ function AboutPage() {
               the API, so the app does not show any.
             </li>
             <li>
-              <span className="text-fg">Stats:</span> what this club actually played and won with,
-              counted from the members' own battle logs (about the last 25 games each, competitive
-              queues only — friendlies and event modes stay out). The official API publishes no global
-              win or pick rates, so these are club numbers: every row carries its own sample size, and
-              fewer than five games reads as a small sample instead of a ranking. A dash in the
-              right-hand column means the API published no trophy or Elo change for those battles.
+              <span className="text-fg">Stats:</span> what this club, or one member, actually played and
+              won with, counted from their own battle logs (about the last 25 games each, competitive
+              queues only — friendlies and event modes stay out). A time range narrows that log. The
+              official API publishes no global win or pick rates, so these are club numbers: every row
+              carries its own sample size, and fewer than five games reads as a small sample instead of
+              a ranking. The player and the range are remembered on this device.
             </li>
             <li>
-              <span className="text-fg">Meta:</span> recent uploads from seven tracked channels — SpenLC,
-              Ash, KairosTime, CryingMan, Rey, Lex and bobby — read from their public YouTube feeds.
-              The <span className="text-fg">Tier lists</span> filter keeps only uploads the backend
-              tagged as a tier list or meta video; <span className="text-fg">Everything</span> shows
-              the feeds as they are. "Named most in titles" counts brawler names across the last 30
-              days of headlines — a reading of the titles, not a tier list. Placements inside a video
-              are never transcribed, and the app does not guess them from a thumbnail.
+              <span className="text-fg">Meta:</span> a tier list (S+ through D) from{" "}
+              <a className="underline" href="https://brawlmetrics.gg/tier-list" target="_blank" rel="noreferrer">
+                BrawlMetrics
+              </a>
+              , whose tiers are percentiles of win rate and use rate — not a creator's opinion, and not
+              guessed from a video title. Overall and Ranked are separate. Under the board, links to
+              SpenLC, Ash, KairosTime, CryingMan, Rey, Lex and bobby, plus each channel's latest
+              tier-list upload when the feed has one.
             </li>
             <li>
               <span className="text-fg">Brawler and map art:</span>{" "}

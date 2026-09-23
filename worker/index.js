@@ -29,7 +29,7 @@ const META_TTL_SECONDS = 900;
 const EVENTS_KEPT = 40;
 const MAX_REQUESTS_PER_MINUTE = 90;
 /** Bumped when a mapper changes shape, so a deploy stops serving the old one. */
-const CACHE_VERSION = "4";
+const CACHE_VERSION = "5";
 
 const CORS_HEADERS = {
   "access-control-allow-origin": "*",
@@ -264,11 +264,18 @@ export function mapBattles(items, playerTag) {
   return out;
 }
 
+/** Two-letter region, or `global`. Anything else is rejected before it hits the path. */
+export function ladderCountry(value) {
+  const country = String(value ?? "global").trim().toLowerCase();
+  return /^(global|[a-z]{2})$/.test(country) ? country : null;
+}
+
 /** Official leaderboard payload → a compact table for the Ladder tab. */
-export function mapRanking(type, raw) {
+export function mapRanking(type, raw, country = "global") {
   const items = Array.isArray(raw?.items) ? raw.items : [];
   return {
     type,
+    country,
     updatedAt: Date.now(),
     rows: items.map((row) => ({
       rank: num(row?.rank),
@@ -411,12 +418,13 @@ async function handlePlayer(request, env, ctx, tag) {
 async function handleLadder(request, env, ctx) {
   const url = new URL(request.url);
   const type = url.searchParams.get("type") === "clubs" ? "clubs" : "players";
-  const country = (url.searchParams.get("country") ?? "global").toLowerCase();
+  const country = ladderCountry(url.searchParams.get("country"));
+  if (!country) return json({ error: "unknown region" }, 400);
   return cached(request, ctx, META_TTL_SECONDS, async () => {
     try {
       const res = await upstream(env, `/rankings/${country}/${type}?limit=200`);
       if (!res.ok) return upstreamFailure(res.status, res.body);
-      return json(mapRanking(type, JSON.parse(res.body)));
+      return json(mapRanking(type, JSON.parse(res.body), country));
     } catch (err) {
       return upstreamUnavailable(err);
     }
@@ -646,6 +654,103 @@ async function creatorFeed(channelId, attempt = 0) {
   return parseCreatorFeed(await res.text());
 }
 
+const TIER_LIST_TTL_SECONDS = 900;
+const TIER_SOURCES = {
+  overall: "https://brawlmetrics.gg/tier-list",
+  ranked: "https://brawlmetrics.gg/tier-list/ranked",
+};
+
+/**
+ * BrawlMetrics publishes the board as an HTML table. Tiers are percentiles of a
+ * composite of win rate and use rate — read from the row, never invented here.
+ */
+export function parseBrawlMetricsTierList(html) {
+  const rows = [];
+  const chunks = String(html ?? "").match(/<tr\b[^>]*\bdata-winrate="[^"]+"[\s\S]*?<\/tr>/gi) ?? [];
+  for (const chunk of chunks) {
+    const attr = (name) => {
+      const match = new RegExp(`\\bdata-${name}="([^"]*)"`, "i").exec(chunk);
+      return match ? match[1] : "";
+    };
+    const tier = (/class="tier-badge[^"]*"[^>]*>([^<]+)/i.exec(chunk)?.[1] ?? "").trim();
+    const name = (/class="tier-table-brawler"[\s\S]*?<\/span>([^<]+)/i.exec(chunk)?.[1] ?? "")
+      .replace(/\s+/g, " ")
+      .trim();
+    const winRate = Number(attr("winrate"));
+    const useRate = Number(attr("userate"));
+    if (!name || !tier || !Number.isFinite(winRate)) continue;
+    rows.push({
+      name,
+      tier,
+      role: attr("class") || null,
+      winRate,
+      useRate: Number.isFinite(useRate) ? useRate : null,
+    });
+  }
+  return rows;
+}
+
+async function readTierPayload(env, scope) {
+  const stored = await env.DATA.get(`tier:${scope}`).catch(() => null);
+  if (!stored) return null;
+  try {
+    return JSON.parse(stored);
+  } catch {
+    return null;
+  }
+}
+
+/** Re-read one scope from the publisher and keep it. The board is not a snapshot. */
+async function refreshTierList(env, scope) {
+  const sourceUrl = TIER_SOURCES[scope];
+  const res = await fetch(sourceUrl, {
+    headers: {
+      accept: "text/html",
+      "user-agent": "Mozilla/5.0 (compatible; n3x-club-companion)",
+    },
+  });
+  if (!res.ok) throw new Error(`tier list ${res.status}`);
+  const rows = parseBrawlMetricsTierList(await res.text());
+  if (rows.length < 10) throw new Error("tier list did not parse");
+  const payload = { scope, source: "BrawlMetrics", sourceUrl, updatedAt: Date.now(), rows };
+  await env.DATA.put(`tier:${scope}`, JSON.stringify(payload), { expirationTtl: 7 * 24 * 60 * 60 });
+  return payload;
+}
+
+function tierFresh(payload) {
+  return payload?.updatedAt && Date.now() - payload.updatedAt < TIER_LIST_TTL_SECONDS * 1000;
+}
+
+async function handleTierList(request, env, ctx) {
+  const scope = new URL(request.url).searchParams.get("scope") === "ranked" ? "ranked" : "overall";
+  return cached(request, ctx, TIER_LIST_TTL_SECONDS, async () => {
+    const stored = await readTierPayload(env, scope);
+    if (tierFresh(stored)) return json(stored);
+    try {
+      return json(await refreshTierList(env, scope));
+    } catch (err) {
+      const message = String(err?.message ?? err);
+      if (stored?.rows?.length) return json({ ...stored, stale: true, error: message });
+      return json({ error: "tier-list-unavailable", message, scope, rows: [] }, 502);
+    }
+  });
+}
+
+/** Both scopes, so a quiet day still picks up a publisher update. */
+async function warmTierLists(env) {
+  const results = [];
+  for (const scope of Object.keys(TIER_SOURCES)) {
+    try {
+      const payload = await refreshTierList(env, scope);
+      results.push({ scope, rows: payload.rows.length });
+    } catch (err) {
+      results.push({ scope, error: String(err?.message ?? err) });
+    }
+  }
+  return results;
+}
+
+
 
 async function handleMaps(request, env, ctx) {
   return cached(request, ctx, META_TTL_SECONDS, async () => {
@@ -688,6 +793,7 @@ export default {
     const channel = /^\/creators\/([a-z0-9-]{2,32})$/.exec(path);
     if (channel) return handleCreatorChannel(request, env, ctx, channel[1]);
     if (path === "/ladder") return handleLadder(request, env, ctx);
+    if (path === "/tier-list") return handleTierList(request, env, ctx);
     if (path === "/maps") return handleMaps(request, env, ctx);
 
     const battles = /^\/battles\/([0-9A-Za-z]{3,16})$/.exec(path);
@@ -699,8 +805,8 @@ export default {
     return json({ error: "not found" }, 404);
   },
 
-  /** One channel per run, so a throttled feed is retried gently over the day. */
+  /** One creator channel per run, and both tier-list scopes, so Meta does not freeze. */
   async scheduled(event, env, ctx) {
-    ctx.waitUntil(warmChannel(env));
+    ctx.waitUntil(Promise.all([warmChannel(env), warmTierLists(env)]));
   },
 };

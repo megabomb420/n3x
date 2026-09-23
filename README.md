@@ -2,11 +2,13 @@
 
 Unofficial companion for the Brawl Stars club **'N3X** (`#2JYGUQ2P8`).
 
-Live public build: https://n3x.grok.me/
+Live: https://n3x-dk5.pages.dev and https://megabomb420.github.io/n3x/
 
 - **Club** — roster, tap a member for trophies / Ranked ELO / recent battles, join & leave log
-- **Meta** — Ladder vs Ranked, separate filters (Ranked uses league / ELO floors, not brawler trophies)
-- **Maps** — current maps and best brawlers
+- **Stats** — the club's own battle logs, or one member's, with a saved time range
+- **Meta** — a published S+–D tier list, plus links to the tracked creators
+- **Ladder** — official leaderboards, with a region that is saved on the device
+- **Maps** — the live event rotation
 
 Not affiliated with Supercell or Brawl Time Ninja.
 
@@ -25,18 +27,18 @@ old Postgres join/leave store with Workers KV:
 - `GET /club` — roster plus the join/leave log (KV snapshot diff)
 - `GET /player/<tag>` — profile, brawlers, Ranked Elo, recent battles
 - `GET /battles/<tag>` — one member's battles, which the app aggregates into Stats
-- `GET /ladder?type=players|clubs` — official leaderboards
+- `GET /ladder?type=players|clubs&country=global|pl|…` — official leaderboards for one region
 - `GET /maps` — the live event rotation
+- `GET /tier-list?scope=overall|ranked` — the published tier list (BrawlMetrics), parsed server-side
 - `GET /creators` — the tracked creator channels (name, handle, channel URL)
 - `GET /creators/<id>` — one channel's recent uploads, classified by title
 - `GET /__warm?index=N` — ops: refresh one creator feed into KV (requires the `REGISTER_KEY` header; the same work runs on a 15-minute cron)
 - `GET /health` — what the deployment can reach
 
 Five tabs: **Club** (roster, member pages, join/leave), **Stats** (the club's own
-battle logs — sample sizes shown, no global rates exist), **Meta** (seven creator
-channels: tier-list uploads, an "everything" view and a count of brawler names in
-the last month's titles), **Ladder** (official leaderboards) and **Maps**
-(rotation).
+battle logs, or one member's, inside a saved time range), **Meta** (a published
+S+–D tier list, plus links to seven creator channels), **Ladder** (official
+leaderboards for a region saved on the device) and **Maps** (rotation).
 
 The API key is set: an owner-created key at
 [developer.brawlstars.com](https://developer.brawlstars.com) whose Supercell-side

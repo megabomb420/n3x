@@ -1,10 +1,21 @@
 import { useQuery } from "@tanstack/react-query";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { findBrawler, loadCatalog } from "@/lib/meta/brawlapi";
 import type { Catalog } from "@/lib/meta/types";
-import { LOW_SAMPLE, loadClubStats, type MetaQueue, type MetaRow } from "@/lib/club/stats-loader";
+import {
+  LOW_SAMPLE,
+  STATS_RANGES,
+  aggregateBattles,
+  loadClubLogs,
+  rangeStart,
+  type MetaQueue,
+  type MetaRow,
+  type StatsRange,
+} from "@/lib/club/stats-loader";
+import { roleLabel } from "@/lib/club/format";
 import { displayBrawlerName, titleCaseMode } from "@/lib/meta/names";
-import { formatPicks, formatRelative } from "@/lib/meta/format";
+import { formatPicks, formatRelative, formatTrophies } from "@/lib/meta/format";
+import { readPref, writePref } from "@/lib/prefs";
 import { useOnline } from "@/hooks/use-online";
 import { cn } from "@/lib/utils";
 import { Portrait } from "./portrait";
@@ -16,48 +27,94 @@ const QUEUES: Array<{ id: MetaQueue; label: string }> = [
   { id: "ranked", label: "Ranked" },
 ];
 
+const CLUB = "club";
+const MEMBER_KEY = "n3x.stats.member";
+const RANGE_KEY = "n3x.stats.range";
+const QUEUE_KEY = "n3x.stats.queue";
+
 const pct = (value: number) => `${Math.round(value * 100)}%`;
 
 function signed(value: number): string {
-  if (value === 0) return "0";
-  return `${value > 0 ? "+" : "−"}${Math.abs(value).toLocaleString("en-GB")}`;
+  return `${value > 0 ? "+" : ""}${value.toLocaleString("en-GB")}`;
+}
+
+function isQueue(value: string | null): value is MetaQueue {
+  return value === "all" || value === "ladder" || value === "ranked";
+}
+
+function isRange(value: string | null): value is StatsRange {
+  return STATS_RANGES.some((entry) => entry.id === value);
 }
 
 /**
- * Club stats: what the club played and won with, straight from the members'
- * battle logs. No global win rates exist in the official API, so this screen
- * shows its own sample sizes instead of borrowing a tier list — the creator
- * meta lives on the Meta tab.
+ * Club stats, or one member's. The official API publishes no global rates, so
+ * every number is this club's own battle log, narrowed by the saved range.
  */
 export function StatsScreen() {
   const online = useOnline();
   const [queue, setQueue] = useState<MetaQueue>("all");
+  const [range, setRange] = useState<StatsRange>("all");
+  const [memberTag, setMemberTag] = useState(CLUB);
+  const [prefsReady, setPrefsReady] = useState(false);
   const [sort, setSort] = useState<"picks" | "winRate">("picks");
   const query = useQuery({
-    queryKey: ["club-stats", queue],
-    queryFn: () => loadClubStats(queue),
+    queryKey: ["club-logs"],
+    queryFn: loadClubLogs,
     refetchInterval: 300_000,
   });
   const catalog = useQuery({ queryKey: ["catalog"], queryFn: loadCatalog }).data ?? null;
-  const meta = query.data;
+  const bundle = query.data;
 
-  const brawlers = useMemo(() => {
-    const rows = meta?.brawlers ?? [];
-    return [...rows].sort((a, b) =>
-      sort === "picks"
-        ? b.picks - a.picks || b.winRate - a.winRate
-        : b.winRate - a.winRate || b.picks - a.picks,
-    );
-  }, [meta, sort]);
+  useEffect(() => {
+    const savedQueue = readPref(QUEUE_KEY);
+    const savedRange = readPref(RANGE_KEY);
+    const savedMember = readPref(MEMBER_KEY);
+    const nextQueue = isQueue(savedQueue) ? savedQueue : "all";
+    const nextRange = isRange(savedRange) ? savedRange : "all";
+    const nextMember = savedMember && savedMember.length > 0 ? savedMember : CLUB;
+    writePref(QUEUE_KEY, nextQueue);
+    writePref(RANGE_KEY, nextRange);
+    writePref(MEMBER_KEY, nextMember);
+    setQueue(nextQueue);
+    setRange(nextRange);
+    setMemberTag(nextMember);
+    setPrefsReady(true);
+  }, []);
 
-  if (query.isLoading) {
+  const member = bundle?.members.find((entry) => entry.tag === memberTag) ?? null;
+  const activeTag = member ? member.tag : null;
+
+  const meta = useMemo(() => {
+    if (!bundle || !prefsReady) return null;
+    return aggregateBattles(bundle.logs, queue, {
+      tag: activeTag,
+      sinceMs: rangeStart(range, Date.now()),
+    });
+  }, [bundle, prefsReady, queue, activeTag, range]);
+
+  function chooseQueue(next: MetaQueue) {
+    setQueue(next);
+    writePref(QUEUE_KEY, next);
+  }
+
+  function chooseRange(next: StatsRange) {
+    setRange(next);
+    writePref(RANGE_KEY, next);
+  }
+
+  function chooseMember(next: string) {
+    setMemberTag(next);
+    writePref(MEMBER_KEY, next);
+  }
+
+  if (query.isLoading || !prefsReady) {
     return (
       <div className="px-3">
         <SkeletonRows count={8} />
       </div>
     );
   }
-  if (query.isError && !meta) {
+  if (query.isError && !bundle) {
     return (
       <div className="px-3">
         <ErrorState
@@ -68,26 +125,56 @@ export function StatsScreen() {
       </div>
     );
   }
-  if (!meta) return null;
+  if (!bundle || !meta) return null;
+
+  const subject = member?.name ?? "Club";
+  const rangeLabel = STATS_RANGES.find((entry) => entry.id === range)?.label ?? "All logs";
 
   return (
     <div className="flex flex-col gap-3 px-3">
-      {!online ? <OfflineBanner stale={Boolean(meta)} /> : null}
+      {!online ? <OfflineBanner stale={Boolean(bundle)} /> : null}
 
       <Segmented
         value={queue}
-        onChange={setQueue}
+        onChange={chooseQueue}
         options={QUEUES.map((entry) => ({ id: entry.id, label: entry.label, hint: meta.totals[entry.id] }))}
       />
 
+      <Segmented
+        value={range}
+        onChange={chooseRange}
+        options={STATS_RANGES.map((entry) => ({ id: entry.id, label: entry.label }))}
+      />
+
+      <label className="flex items-center gap-2 rounded-xl bg-surface px-3 py-2">
+        <span className="shrink-0 text-xs uppercase tracking-wider text-subtle">Player</span>
+        <select
+          value={member ? member.tag : CLUB}
+          onChange={(event) => chooseMember(event.target.value)}
+          className="min-h-9 min-w-0 flex-1 bg-transparent text-right text-sm text-fg outline-none"
+          aria-label="Club member"
+        >
+          <option value={CLUB}>Whole club</option>
+          {bundle.members.map((entry) => (
+            <option key={entry.tag} value={entry.tag}>
+              {entry.name}
+            </option>
+          ))}
+        </select>
+      </label>
+
       <section className="rounded-2xl bg-surface p-4">
         <div className="flex items-start justify-between gap-3">
-          <div>
+          <div className="min-w-0">
             <p className="text-xs uppercase tracking-wider text-subtle">Battles analysed</p>
-            <p className="font-display text-3xl leading-none tracking-wide">{meta.battles.toLocaleString("en-GB")}</p>
+            <p className="truncate font-display text-3xl leading-none tracking-wide">{meta.battles.toLocaleString("en-GB")}</p>
+            <p className="mt-1 truncate text-xs text-muted">
+              {subject}
+              {member ? ` · ${roleLabel(member.role)} · ${formatTrophies(member.trophies)}` : ""}
+            </p>
           </div>
           <div className="text-right">
-            <p className="text-xs uppercase tracking-wider text-subtle">Club win rate</p>
+            <p className="text-xs uppercase tracking-wider text-subtle">Win rate</p>
             <p className={cn("font-display text-3xl leading-none tracking-wide", meta.winRate >= 0.5 ? "text-win" : "text-fg")}>
               {pct(meta.winRate)}
             </p>
@@ -95,24 +182,33 @@ export function StatsScreen() {
         </div>
         <dl className="mt-3 grid grid-cols-3 gap-2 text-center">
           <Stat label="Wins" value={meta.wins.toLocaleString("en-GB")} />
-          <Stat label="Members" value={String(meta.members)} hint={meta.unavailable > 0 ? `${meta.unavailable} without logs` : undefined} />
+          <Stat
+            label={member ? "Role" : "Members"}
+            value={member ? roleLabel(member.role) : String(meta.members)}
+            hint={!member && bundle.unavailable > 0 ? `${bundle.unavailable} without logs` : undefined}
+          />
           <Stat
             label="Window"
             value={meta.windowStart ? `${Math.max(1, Math.round((Date.now() - Date.parse(meta.windowStart)) / 86_400_000))}d` : "—"}
           />
         </dl>
         <p className="mt-3 text-[11px] text-subtle">
+          {rangeLabel}
           {meta.windowStart && meta.windowEnd
-            ? `${new Date(meta.windowStart).toLocaleDateString("en-GB")} → ${new Date(meta.windowEnd).toLocaleDateString("en-GB")} · `
+            ? ` · ${new Date(meta.windowStart).toLocaleDateString("en-GB")} → ${new Date(meta.windowEnd).toLocaleDateString("en-GB")}`
             : ""}
-          updated {formatRelative(meta.fetchedAt)} · club battle logs, Supercell API
+          {" · "}updated {formatRelative(bundle.fetchedAt)}
         </p>
       </section>
 
       {meta.battles === 0 ? (
         <EmptyState
-          title="No competitive battles yet"
-          body="Nothing on this queue in the members' recent battle logs. Ladder and Ranked games show up here as they are played."
+          title="No competitive battles in this range"
+          body={
+            member
+              ? `${member.name} has nothing on this queue inside ${rangeLabel.toLowerCase()}. The official log only keeps recent games, so a wide range can still be empty.`
+              : "Nothing on this queue in the members' recent battle logs for this range. Ladder and Ranked games show up here as they are played."
+          }
         />
       ) : (
         <>
@@ -125,10 +221,7 @@ export function StatsScreen() {
                     key={mode}
                     type="button"
                     onClick={() => setSort(mode)}
-                    className={cn(
-                      "min-h-8 px-3",
-                      sort === mode ? "bg-surface-3 text-fg" : "text-subtle",
-                    )}
+                    className={cn("min-h-8 px-3", sort === mode ? "bg-surface-3 text-fg" : "text-subtle")}
                   >
                     {mode === "picks" ? "Picks" : "Win rate"}
                   </button>
@@ -136,9 +229,13 @@ export function StatsScreen() {
               </div>
             </div>
             <ul className="flex flex-col gap-1.5">
-              {brawlers.map((row) => (
-                <BrawlerRow key={row.name} row={row} catalog={catalog} />
-              ))}
+              {[...meta.brawlers]
+                .sort((a, b) =>
+                  sort === "picks" ? b.picks - a.picks || b.winRate - a.winRate : b.winRate - a.winRate || b.picks - a.picks,
+                )
+                .map((row) => (
+                  <BrawlerRow key={row.name} row={row} catalog={catalog} />
+                ))}
             </ul>
           </section>
 
@@ -148,10 +245,10 @@ export function StatsScreen() {
       )}
 
       <p className="pb-2 text-[11px] leading-relaxed text-subtle">
-        Counting competitive battles only — friendlies and event modes stay out. The official API publishes no global
-        win or pick rates, so these are this club's own games; a row with fewer than {LOW_SAMPLE} picks is marked as a
-        small sample rather than ranked against the rest. The right-hand number is net trophies on the ladder and net
-        Elo in Ranked — a dash means the API published none for those battles.
+        Counting competitive battles only — friendlies and event modes stay out. The official log keeps about the last
+        25 games per player, so 30 days often matches All logs. A row with fewer than {LOW_SAMPLE} picks is a small
+        sample, not a ranking. The right-hand number is net trophies on the ladder and net Elo in Ranked — a dash means
+        the API published none for those battles.
       </p>
     </div>
   );
@@ -161,8 +258,8 @@ function Stat({ label, value, hint }: { label: string; value: string; hint?: str
   return (
     <div className="rounded-xl bg-surface-2 px-2 py-2">
       <dt className="text-[10px] uppercase tracking-wider text-subtle">{label}</dt>
-      <dd className="mt-0.5 text-sm text-fg">{value}</dd>
-      {hint ? <p className="text-[10px] text-low">{hint}</p> : null}
+      <dd className="truncate text-sm text-fg">{value}</dd>
+      {hint ? <dd className="truncate text-[10px] text-subtle">{hint}</dd> : null}
     </div>
   );
 }
@@ -185,7 +282,7 @@ function Segmented<T extends string>({
           onClick={() => onChange(option.id)}
           aria-pressed={value === option.id}
           className={cn(
-            "min-h-9 flex-1 rounded-full px-3 text-xs font-medium",
+            "min-h-9 flex-1 rounded-full px-2 text-xs font-medium",
             value === option.id ? "bg-surface-3 text-fg" : "text-subtle",
           )}
         >
@@ -197,13 +294,7 @@ function Segmented<T extends string>({
   );
 }
 
-function BrawlerRow({
-  row,
-  catalog,
-}: {
-  row: MetaRow;
-  catalog: Catalog | null;
-}) {
+function BrawlerRow({ row, catalog }: { row: MetaRow; catalog: Catalog | null }) {
   const small = row.picks < LOW_SAMPLE;
   return (
     <li className="flex items-center gap-2.5 rounded-xl bg-surface px-3 py-2">
@@ -272,3 +363,4 @@ function Breakdown({
     </section>
   );
 }
+
