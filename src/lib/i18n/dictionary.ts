@@ -84,6 +84,12 @@ export const STRINGS = {
     "stats.winRate": "Win rate",
     "stats.wins": "Wins",
     "stats.members": "Members",
+    "stats.trophies": "Trophies",
+    "stats.battlesShort": "battles",
+    "stats.members.note":
+      "Sorted by what they gained in this window — trophies in the Ladder queue, Elo in Ranked.",
+    "stats.legend.members":
+      "Members — the left number is their trophies now with the window's gain under it; the right one is their Ranked Elo and tier, read from their own profile (a dash means the profile did not answer).",
     "stats.role": "Role",
     "stats.window": "Window",
     "stats.brawlers": "Brawlers",
@@ -267,6 +273,12 @@ export const STRINGS = {
     "stats.winRate": "Win rate",
     "stats.wins": "Wygrane",
     "stats.members": "Członkowie",
+    "stats.trophies": "Puchary",
+    "stats.battlesShort": "bitew",
+    "stats.members.note":
+      "Sortowani po tym, ile wbili w tym zakresie — puchary w kolejce pucharowej, Elo w rankingowej.",
+    "stats.legend.members":
+      "Członkowie — liczba po lewej to puchary teraz, a pod nią bilans z zakresu; po prawej Elo w Ranked i tier z własnego profilu (myślnik oznacza, że profil nie odpowiedział).",
     "stats.role": "Rola",
     "stats.window": "Okres",
     "stats.brawlers": "Zadymiarze",

@@ -9,6 +9,7 @@ import { readPref, writePref } from "@/lib/prefs";
 import { useOnline } from "@/hooks/use-online";
 import { cn } from "@/lib/utils";
 import { EmptyState, ErrorState, OfflineBanner, SkeletonRows } from "./state-views";
+import { TabButtons } from "./tab-buttons";
 type LadderType = "players" | "clubs";
 
 interface LadderRow {
@@ -73,26 +74,12 @@ export function LadderScreen() {
     <div className="flex flex-col gap-3 px-3">
       {!online ? <OfflineBanner stale={Boolean(data)} /> : null}
 
-      <div role="tablist" aria-label={t("nav.ladder")} className="grid grid-cols-2 gap-0.5 rounded-lg bg-surface-2 p-0.5">
-        {TYPES.map((option) => {
-          const active = option.value === type;
-          return (
-            <button
-              key={option.value}
-              type="button"
-              role="tab"
-              aria-selected={active}
-              onClick={() => setType(option.value)}
-              className={cn(
-                "h-9 rounded-md font-display text-lg tracking-wide transition-colors duration-150",
-                active ? "bg-surface text-fg shadow-[var(--shadow-border)]" : "text-muted",
-              )}
-            >
-              {t(option.label)}
-            </button>
-          );
-        })}
-      </div>
+      <TabButtons
+        label={t("nav.ladder")}
+        value={type}
+        onChange={setType}
+        options={TYPES.map((option) => ({ id: option.value, label: t(option.label) }))}
+      />
 
       <label className="flex items-center gap-2 rounded-xl bg-surface px-3 py-2">
         <span className="shrink-0 text-xs uppercase tracking-wider text-subtle">{t("ladder.region")}</span>

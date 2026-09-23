@@ -8,7 +8,7 @@
  */
 import { apiGet } from "@/lib/api/client";
 import { cacheGet, cacheSet } from "@/lib/meta/cache";
-import { loadClubHome } from "./queries";
+import { loadClubHome, loadClubPlayer } from "./queries";
 import type { PlayerBattle } from "./types";
 
 export { LOW_SAMPLE, STATS_RANGES, aggregateBattles, rangeStart } from "./stats";
@@ -16,16 +16,26 @@ export type { ClubMeta, MetaQueue, MetaRow, StatsRange } from "./stats";
 
 const LOG_TTL_MS = 5 * 60_000;
 const BUNDLE_TTL_MS = 10 * 60_000;
+const RANKED_TTL_MS = 10 * 60_000;
 const LOG_CONCURRENCY = 6;
+const RANKED_CONCURRENCY = 3;
 const MAX_MEMBERS = 30;
 /** Bumped when a stored shape changes, so an old payload is never re-read. */
-const CACHE_TAG = "v2";
+const CACHE_TAG = "v3";
 
 export interface StatsMember {
   tag: string;
   name: string;
   role: string;
   trophies: number;
+  iconUrl: string | null;
+}
+
+/** Current Ranked standing, read from the member's own profile. */
+export interface MemberRanked {
+  tag: string;
+  elo: number | null;
+  rankName: string | null;
 }
 
 export interface ClubLogs {
@@ -54,6 +64,37 @@ async function loadMemberBattles(tag: string): Promise<PlayerBattle[]> {
   }
 }
 
+/**
+ * Ranked Elo and tier for every member, from their own profile — the club
+ * endpoint publishes trophies only. Batched, and cached for ten minutes so
+ * reopening the list does not hammer the Worker with 25 profiles.
+ */
+export async function loadMemberRanked(tags: string[]): Promise<MemberRanked[]> {
+  const out: MemberRanked[] = tags.map((tag) => ({ tag, elo: null, rankName: null }));
+
+  for (let index = 0; index < tags.length; index += RANKED_CONCURRENCY) {
+    const slice = tags.slice(index, index + RANKED_CONCURRENCY);
+    const results = await Promise.all(
+      slice.map(async (tag, offset) => {
+        const key = `ranked:${CACHE_TAG}:${tag}`;
+        const hit = cacheGet<MemberRanked>(key);
+        if (hit && Date.now() - hit.savedAt < RANKED_TTL_MS) return { at: index + offset, value: hit.value };
+        try {
+          const profile = await loadClubPlayer(tag);
+          const value: MemberRanked = { tag, elo: profile.rankedElo, rankName: profile.rankedRankName };
+          cacheSet(key, value);
+          return { at: index + offset, value };
+        } catch {
+          const value: MemberRanked = { tag, elo: hit?.value.elo ?? null, rankName: hit?.value.rankName ?? null };
+          return { at: index + offset, value };
+        }
+      }),
+    );
+    for (const result of results) out[result.at] = result.value;
+  }
+  return out;
+}
+
 /** Every member's recent log, plus the roster the member picker reads. */
 export async function loadClubLogs(): Promise<ClubLogs> {
   const cacheKey = `club-logs:${CACHE_TAG}`;
@@ -66,6 +107,7 @@ export async function loadClubLogs(): Promise<ClubLogs> {
     name: member.name,
     role: String(member.role),
     trophies: member.trophies,
+    iconUrl: member.iconUrl,
   }));
   const logs: Array<{ tag: string; battles: PlayerBattle[] }> = [];
   let unavailable = 0;

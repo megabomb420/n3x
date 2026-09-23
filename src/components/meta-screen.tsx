@@ -13,6 +13,7 @@ import { useOnline } from "@/hooks/use-online";
 import { cn } from "@/lib/utils";
 import { Portrait } from "./portrait";
 import { EmptyState, ErrorState, OfflineBanner, SkeletonRows } from "./state-views";
+import { TabButtons } from "./tab-buttons";
 
 const SCOPES: Array<{ id: TierScope; label: "meta.scope.overall" | "meta.scope.ranked" }> = [
   { id: "overall", label: "meta.scope.overall" },
@@ -76,23 +77,16 @@ export function MetaScreen() {
     <div className="flex flex-col gap-3 px-3">
       {!online ? <OfflineBanner stale={Boolean(tier.data)} /> : null}
 
-      <div className="flex gap-1 rounded-full bg-surface p-1" role="tablist" aria-label={t("nav.meta")}>
-        {SCOPES.map((option) => (
-          <button
-            key={option.id}
-            type="button"
-            role="tab"
-            aria-selected={scope === option.id}
-            onClick={() => chooseScope(option.id)}
-            className={cn(
-              "min-h-9 flex-1 rounded-full px-3 text-xs font-medium",
-              scope === option.id ? "bg-surface-3 text-fg" : "text-subtle",
-            )}
-          >
-            {t(option.label)}
-          </button>
-        ))}
-      </div>
+      {scope ? (
+        <TabButtons
+          label={t("nav.meta")}
+          value={scope}
+          onChange={chooseScope}
+          options={SCOPES.map((option) => ({ id: option.id, label: t(option.label) }))}
+        />
+      ) : (
+        <div className="h-10 animate-pulse rounded-lg bg-surface-2" />
+      )}
 
       {scope && tier.isLoading ? <SkeletonRows count={6} /> : null}
       {tier.isError && !tier.data ? (
