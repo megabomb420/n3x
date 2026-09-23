@@ -23,9 +23,14 @@ export const Route = createRootRoute({
           "Unofficial companion for Brawl Stars club 'N3X (#2JYGUQ2P8) — members, joins and leaves, plus live Ladder vs Ranked meta.",
       },
       { name: "theme-color", content: "#05070a" },
+      { name: "color-scheme", content: "dark" },
       { name: "apple-mobile-web-app-capable", content: "yes" },
       { name: "mobile-web-app-capable", content: "yes" },
-      { name: "apple-mobile-web-app-status-bar-style", content: "black-translucent" },
+      // `black-translucent` is deprecated and, on iOS 26, makes the standalone
+      // web view the screen *minus* the status bar anchored at the top — the
+      // header paints under the clock and the bottom 62 pt are lost. An opaque
+      // status bar puts the view below it, where it belongs.
+      { name: "apple-mobile-web-app-status-bar-style", content: "black" },
       { name: "apple-mobile-web-app-title", content: APP_NAME },
     ],
     links: [

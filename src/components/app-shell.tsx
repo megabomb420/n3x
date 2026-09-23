@@ -50,34 +50,40 @@ export function AppShell({
   }, [pathname]);
 
   /**
-   * iOS 26 standalone reports the layout viewport as the screen *minus* the
-   * top safe-area inset, anchored at the top of the screen; `100lvh` still says
-   * the full screen, but a probe at its bottom edge is never displayed (measured
-   * on an iPhone 17 Pro: `inner`/`doc` 812, `lvh` 874, `env top 62 · bottom 34`).
-   * So:
+   * iOS sizes the standalone web view in one of two ways, and the shell has to
+   * be right in both:
    *
-   *  - grow the column whenever the visible viewport really is taller than the
-   *    layout viewport (Safari's toolbars are left alone);
-   *  - drop the home-indicator padding when the layout viewport is the shorter
-   *    one, because the inset then lies *below* the paintable area and reserving
-   *    it only pushes the tabs ~38 px up into the black.
+   *  - the view is the screen *minus* the status bar, anchored at the top: the
+   *    status bar covers our first rows (`env(safe-area-inset-top)` is real) and
+   *    the bottom inset lies *below* the paintable area, so reserving it only
+   *    pushed the tabs ~38 px up into the black;
+   *  - the view sits below the status bar and reaches the screen bottom: the top
+   *    inset is already spent and the bottom inset is ours to honour.
+   *
+   * `100lvh` versus `innerHeight` separates "the layout is short" from "the
+   * layout is the whole screen"; `env(safe-area-inset-top)` says whether the
+   * status bar is over our content. Measured on an iPhone 17 Pro / iOS 26:
+   * `inner`/`doc` 812, `lvh` 874, insets 62/34.
    */
   useEffect(() => {
     const root = document.documentElement;
     const ruler = document.createElement("div");
-    ruler.style.cssText = "position:absolute;left:-9999px;width:1px;height:100lvh";
+    ruler.style.cssText =
+      "position:absolute;left:-9999px;width:1px;height:100lvh;padding-top:env(safe-area-inset-top, 0px)";
     const sync = () => {
       if (!ruler.isConnected) document.body.append(ruler);
       const standalone = matchMedia("(display-mode: standalone), (display-mode: fullscreen)").matches;
       const visible = Math.max(window.innerHeight, window.visualViewport?.height ?? 0);
-      const screen = ruler.getBoundingClientRect().height;
+      const style = getComputedStyle(ruler);
+      const screen = parseFloat(style.height) || 0;
+      const statusBarOverContent = (parseFloat(style.paddingTop) || 0) > 0;
 
       if (standalone && visible > root.clientHeight + 1) {
         root.style.setProperty("--app-h", `${Math.round(visible)}px`);
       } else {
         root.style.removeProperty("--app-h");
       }
-      if (standalone && screen > visible + 1) {
+      if (standalone && screen > visible + 1 && statusBarOverContent) {
         root.style.setProperty("--inset-bottom", "0px");
       } else {
         root.style.removeProperty("--inset-bottom");
