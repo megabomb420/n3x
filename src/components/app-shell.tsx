@@ -1,11 +1,10 @@
-import { Link, useNavigate, useRouterState } from "@tanstack/react-router";
+import { Link, useRouterState } from "@tanstack/react-router";
 import { useQueryClient } from "@tanstack/react-query";
 import { ChartColumn, Map, RotateCw, Settings, Swords, Users, Youtube } from "lucide-react";
 import { useCallback, useEffect, useRef, type ReactNode } from "react";
 import { useT, type StringKey } from "@/lib/i18n/provider";
 import { cacheClear } from "@/lib/meta/cache";
 import { usePullToRefresh } from "@/hooks/use-pull-to-refresh";
-import { useTabSwipe } from "@/hooks/use-tab-swipe";
 import { cn } from "@/lib/utils";
 import { ClubLogo } from "./club-logo";
 
@@ -51,24 +50,6 @@ export function AppShell({
   /** The refreshing hold keeps the column open while the queries settle. */
   const offset = refreshing ? 44 : pull;
   const dragging = pull > 0 && !refreshing;
-
-  const navigate = useNavigate();
-  const tabIndex = TABS.findIndex((tab) => tab.active(pathname));
-  const step = useCallback(
-    (delta: number) => {
-      const nextTab = TABS[tabIndex + delta];
-      // `replace` on purpose: the tabs are the navigation, and an installed app
-      // has no browser back button. Keeping them out of the history is also what
-      // stops iOS's edge swipe from navigating away.
-      if (nextTab) void navigate({ to: nextTab.to, replace: true });
-    },
-    [navigate, tabIndex],
-  );
-  const { dx, target } = useTabSwipe(mainRef, {
-    next: () => step(1),
-    previous: () => step(-1),
-  });
-  const targetTab = target ? TABS[tabIndex + (target === "next" ? 1 : -1)] : null;
 
   useEffect(() => {
     if (import.meta.env.PROD && "serviceWorker" in navigator) {
@@ -189,24 +170,17 @@ export function AppShell({
           ref={mainRef}
           className="h-full overflow-y-auto overscroll-contain pb-3"
           style={{
-            transform: dx || offset ? `translate(${dx}px, ${offset}px)` : undefined,
-            transition: dragging || dx ? "none" : "transform 200ms ease-out",
+            transform: offset ? `translateY(${offset}px)` : undefined,
+            transition: dragging ? "none" : "transform 200ms ease-out",
           }}
         >
           {children}
         </main>
-
-        <div
-          aria-hidden
-          className="pointer-events-none absolute inset-x-0 bottom-2 flex justify-center transition-opacity duration-150"
-          style={{ opacity: targetTab ? 1 : 0 }}
-        >
-          <span className="rounded-full bg-surface px-3 py-1 font-display text-sm tracking-wide text-fg shadow-[var(--shadow-border)]">
-            {targetTab ? t(targetTab.label) : ""}
-          </span>
-        </div>
       </div>
 
+      {/* Every in-app link replaces rather than pushes: the tabs are the
+          navigation, the installed app has no back button, and with a single
+          history entry iOS's edge-swipe-back has nowhere to go. */}
       <nav className="shrink-0 border-t border-border bg-bg safe-bottom" aria-label="Primary">
         <div className="grid grid-cols-6">
           {TABS.map((tab) => {
