@@ -132,7 +132,7 @@ Auth is off. Database is on, rows unowned (no `user_id`). Schema: `migrations/00
 
 Stack: TanStack Start, React 19, Tailwind v4, Vite, Nitro preset `vercel`. App shell is a locked `100svh` column: header and nav do not scroll, only `<main>` does. Do not switch that to `position: fixed` or document scroll — iPhone already clipped the top and left a dead band at the bottom.
 
-## What is broken
+### What was broken then (Grok era — resolved by the rewrite)
 
 On https://n3x.grok.me/ the shell renders and then:
 
@@ -158,7 +158,7 @@ Cloudflare in front of brawltime.ninja rejects the published host's Node/serverl
 
 Official `api.brawlstars.com` needs a personal API token we do not have and must not invent. BrawlAPI (`api.brawlapi.com`) has brawlers and maps, not clubs or players.
 
-## What already works (leave it)
+### What already worked then (Grok era)
 
 - Preview loads 28 members, member pages, Ladder meta, Ranked ELO chips.
 - Ranked cube field `trophyRange` on `powerplay=1` is a **league index 1–22** (Bronze I → Pro), not trophies/100. Floors used as labels only: Gold 1500, Diamond 3000, Mythic 4500, Legendary 6000, Masters 8250. Mapping in `src/lib/meta/cube.ts` (`LEAGUE_IN`). Raw per-point ELO is not published.
@@ -166,7 +166,7 @@ Official `api.brawlstars.com` needs a personal API token we do not have and must
 - Tier score is sample-aware. LOW samples cannot be S/A. Do not invent creator S–D boards. Creator strip is YouTube RSS titles + dates only (`src/lib/meta/creators.ts`).
 - Join/leave is a snapshot diff, not a live "who left" API. Empty until a second roster differs from the first saved snapshot.
 
-## What was already tried
+### What was already tried (Grok era)
 
 All of this is on `main`. The published site was still 403 the last time it was opened, so either that deploy predates this code or the edge is blocked too. **Confirm which build is live before adding another proxy.**
 
@@ -180,7 +180,9 @@ All of this is on `main`. The published site was still 403 the last time it was 
 
 `jina.ai` and `cors.lol` are third-party relays. They are not a fix. They break, change HTML, and should not be the production path. Do not add more open proxies.
 
-## Where to change code
+## Reference
+
+### Where to change code
 
 The map as of the rewrite (during the BTN era this table named `src/lib/http/outbound.ts`, `src/lib/http/btn-client.ts`, `src/lib/club/parse.ts` and `src/lib/meta/cube.ts` — the rewrite deleted all four):
 
@@ -195,7 +197,7 @@ The map as of the rewrite (during the BTN era this table named `src/lib/http/out
 | `src/lib/meta/brawlapi.ts` | Brawler-name index the Meta board counts against |
 | `src/routes/` | One file per tab, plus the member route |
 
-## Constraints
+### Constraints the Grok build lived under (mostly historical)
 
 - Do not invent rankings, sample sizes, or a club roster.
 - Do not add a Brawl Stars API token unless the owner provides one. *The owner has since created one; it is a Worker secret, never committed.*
@@ -205,7 +207,7 @@ The map as of the rewrite (during the BTN era this table named `src/lib/http/out
 - PGLite in the **built** Vercel preview crashes looking for `pglite.data`. `persistAndDiff` skips the DB when `PROD && !DATABASE_URL`. Real Neon (`DATABASE_URL` on deploy) is the join/leave store. Dev PGLite is fine.
 - `npm run dev` only, never raw `vite`. `startup.sh` must stay.
 
-## Suggested next step (Grok era — superseded; see "How to verify" below)
+### Suggested next step (Grok era — superseded; see "How to verify" below)
 
 1. Open https://n3x.grok.me/ and check whether `/btn-src/club/2JYGUQ2P8` returns the vike HTML or another 403. That single request tells you if the edge proxy works.
 2. If 200 and the body contains `vike_pageContext`, the client path in `btnGetHtml` should already populate the club once this commit is what is deployed. Then check `POST /btn-src/api/trpc/auth.getToken` with `{"json":null}` for meta.
@@ -214,7 +216,7 @@ The map as of the rewrite (during the BTN era this table named `src/lib/http/out
    - a Brawl Stars API token from the owner, used only server-side.
 4. Re-test the public site, not only the preview. Preview success does not mean the publish works.
 
-## How to verify
+### How to verify
 
 Fast, from the repository root:
 
@@ -238,7 +240,7 @@ Deploying after a change: `npm run build` then
 for Cloudflare Pages; GitHub Pages follows from the push via `.github/workflows/pages.yml`.
 Worker changes: `npx wrangler deploy --config worker/wrangler.jsonc`.
 
-### Grok-era verification (superseded)
+#### Grok-era verification (superseded)
 
 Preview: club home shows members (about 28), search filters them, a member page shows trophies and a Ranked ELO number, Meta shows Ladder rows and a Ranked tab with ELO chips, console has no uncaught errors.
 
