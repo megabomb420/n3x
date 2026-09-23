@@ -29,10 +29,9 @@ export const Route = createRootRoute({
       { name: "color-scheme", content: "dark" },
       { name: "apple-mobile-web-app-capable", content: "yes" },
       { name: "mobile-web-app-capable", content: "yes" },
-      // Test the opaque default style on installed iOS 26: unlike a CSS
-      // offset, it can change which part of the screen WebKit gives the page.
-      // The previous black style left an unpaintable band below the tabs.
-      { name: "apple-mobile-web-app-status-bar-style", content: "default" },
+      // Match the installed AnimeBuddy chrome for the iPhone comparison.
+      // WebKit may retain the status-bar mode chosen when the icon was added.
+      { name: "apple-mobile-web-app-status-bar-style", content: "black-translucent" },
       { name: "apple-mobile-web-app-title", content: APP_NAME },
     ],
     links: [
