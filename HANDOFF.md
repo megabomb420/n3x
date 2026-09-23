@@ -135,6 +135,12 @@ Verified on the stuck tab itself (the one showing the error screen): after the n
 
 **The club's info card carries a wash.** The accent from the card's top-left corner, gone by the middle of the card (`from-gold/[0.13] via-transparent to-transparent`), clipped exactly by the card's radius (`overflow-hidden` on `rounded-2xl`). The content is wrapped in a positioned div so every line reads *above* the wash rather than under it — an absolutely positioned layer paints over unpositioned siblings, which would have tinted the description and the numbers. Verified in the browser: the gradient computes as `linear-gradient(to right bottom, oklab(… / 0.13) 0%, transparent 50%, transparent 100%)`, the card is `16px` radius with `overflow: hidden`, and the stat tiles sit on plain surface.
 
+## A pull moves the hint, not the column (23 Sep 2026)
+
+The owner sent a screenshot of the club tab with the info card sitting ~12 px below the header line and asked for it *exactly* under the line. Measured: at rest the card is already flush (`headerBottom` 64, `cardTop` 64, difference 0 — the header's border is the (10,34,40) row and nothing sits between it and the card). The screenshot was taken mid-gesture: the band between the border and the card held the pull-to-refresh pill at about 20% opacity (rows 434–469 in the image, `bg-surface` under a dark background), which is exactly `pull ≈ 12` — the column used to translate by the pull distance, so the card slid down and the gap looked permanent.
+
+Chosen behaviour (the owner picked it from three options): the column stays where it is and only the hint pill moves. `app-shell.tsx` no longer puts a transform on `<main>`; the pill keeps its own `translateY(min(offset, 44) - 26)`, which is clipped above the column at rest and slides in as the pull grows. Verified with a synthetic touch sequence on the deployed host: card top minus header bottom is **0 px** at rest, during a 140 px drag and while the refresh that the drag triggered was running, and the pill reaches opacity 1.00 during the pull and returns to 0.00 when the refresh settles.
+
 ## History
 
 ### Original handoff (22 Sep 2026): the published site did not load club or meta
