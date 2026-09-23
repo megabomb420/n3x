@@ -1,11 +1,12 @@
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
-import { Clock, LogIn, LogOut, Search, Shield } from "lucide-react";
+import { Clock, LogIn, LogOut, Search, Shield, Trophy } from "lucide-react";
 import { useMemo, useState } from "react";
 import { loadClubHome } from "@/lib/club/queries";
 import { loadClubLogs, recentBattles } from "@/lib/club/stats-loader";
-import { nameColorToCss } from "@/lib/club/format";
-import type { ClubEvent, ClubMember } from "@/lib/club/types";
+import { bareTag, nameColorToCss } from "@/lib/club/format";
+import { CLUB_TAG, type ClubEvent, type ClubMember } from "@/lib/club/types";
+import { loadLadder } from "@/lib/ladder/rows";
 import { useRoleLabel, useT, type StringKey } from "@/lib/i18n/provider";
 import { formatRelative, formatTrophies } from "@/lib/meta/format";
 import { useOnline } from "@/hooks/use-online";
@@ -50,6 +51,14 @@ export function ClubScreen() {
     queryFn: loadClubLogs,
     refetchInterval: 300_000,
   });
+  // The club's own place in the Polish club table — the Ladder tab reads the
+  // same query key, so opening one warms the other.
+  const ladder = useQuery({
+    queryKey: ["ladder", "clubs", "pl"],
+    queryFn: () => loadLadder("clubs", "pl"),
+    staleTime: 300_000,
+    refetchInterval: 300_000,
+  });
   const latest = useMemo(() => (logs.data ? recentBattles(logs.data.logs, FEED) : []), [logs.data]);
   const memberName = useMemo(() => {
     const names = new Map<string, string>();
@@ -74,6 +83,15 @@ export function ClubScreen() {
   }, [members, q]);
 
   const typeKey = club ? TYPE_KEYS[club.type] : undefined;
+  // Where this club stands in Poland, from the same table the Ladder tab shows.
+  const plRow = ladder.data?.rows.find((row) => bareTag(row.tag) === CLUB_TAG) ?? null;
+  const plRank = ladder.isLoading
+    ? t("club.rankPlReading")
+    : ladder.isError && !ladder.data
+      ? t("club.rankPlFailed")
+      : plRow
+        ? t("club.rankPl", { rank: plRow.rank })
+        : t("club.rankPlNone");
 
   return (
     <div className="flex flex-col gap-3 px-3">
@@ -108,6 +126,10 @@ export function ClubScreen() {
               <Stat label={t("club.trophies")} value={formatTrophies(club.trophies)} />
               <Stat label={t("club.required")} value={formatTrophies(club.requiredTrophies)} />
             </dl>
+            <p className="mt-3 flex items-center gap-1.5 text-xs text-muted">
+              <Trophy className="size-3.5 shrink-0 text-gold" />
+              {plRank}
+            </p>
             <p className="mt-3 flex items-center gap-1 text-[11px] text-subtle">
               <Clock className="size-3" />
               {t("common.updated", { when: formatRelative(club.fetchedAt) })}
@@ -115,18 +137,9 @@ export function ClubScreen() {
             </p>
           </section>
 
-          {/* Ranked first, then what the club has been playing: both start with
-              the tab, so the reader does not have to scroll to trigger either. */}
-          {members.length > 0 ? <RankedBoard members={members} /> : null}
-
-          <ClubBattles
-            rows={latest}
-            name={memberName}
-            loading={logs.isLoading}
-            failed={logs.isError && !logs.data}
-            onRetry={() => void logs.refetch()}
-          />
-
+          {/* The roster leads, right under the club's own card. The Ranked board
+              and the battle feed follow it and both start with the tab, so they
+              are already filling while the reader is up here. */}
           <label className="flex min-h-11 items-center gap-2 rounded-xl bg-surface px-3">
             <Search className="size-4 text-subtle" />
             <input
@@ -150,6 +163,16 @@ export function ClubScreen() {
               </ul>
             )}
           </section>
+
+          {members.length > 0 ? <RankedBoard members={members} /> : null}
+
+          <ClubBattles
+            rows={latest}
+            name={memberName}
+            loading={logs.isLoading}
+            failed={logs.isError && !logs.data}
+            onRetry={() => void logs.refetch()}
+          />
 
           <ActivityBlock
             events={events}
@@ -231,9 +254,9 @@ function Stat({ label, value }: { label: string; value: string }) {
  * and shouting on three of them would read as noise, not as rank.
  */
 const ROLE_STYLE: Record<string, { edge: string; tint: string; text: string }> = {
-  president: { edge: "border-l-gold", tint: "bg-gold/[0.07]", text: "text-gold" },
-  vicePresident: { edge: "border-l-ranked", tint: "bg-ranked/[0.07]", text: "text-ranked" },
-  senior: { edge: "border-l-win", tint: "bg-win/[0.07]", text: "text-win" },
+  president: { edge: "border-l-win", tint: "bg-win/[0.07]", text: "text-win" },
+  vicePresident: { edge: "border-l-gold", tint: "bg-gold/[0.07]", text: "text-gold" },
+  senior: { edge: "border-l-ranked", tint: "bg-ranked/[0.07]", text: "text-ranked" },
 };
 
 function MemberRow({ member, rank }: { member: ClubMember; rank: number }) {

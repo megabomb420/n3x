@@ -1,8 +1,10 @@
 import { useQuery } from "@tanstack/react-query";
 import { Clock } from "lucide-react";
 import { useEffect, useState } from "react";
-import { apiGet } from "@/lib/api/client";
+import { bareTag } from "@/lib/club/format";
+import { CLUB_TAG } from "@/lib/club/types";
 import { defaultLadderCountry, ladderRegionName, LADDER_REGIONS } from "@/lib/ladder/regions";
+import { loadLadder, type LadderRow, type LadderType } from "@/lib/ladder/rows";
 import { useI18n, useT } from "@/lib/i18n/provider";
 import { formatRelative, formatTrophies } from "@/lib/meta/format";
 import { readPref, writePref } from "@/lib/prefs";
@@ -10,23 +12,6 @@ import { useOnline } from "@/hooks/use-online";
 import { cn } from "@/lib/utils";
 import { EmptyState, ErrorState, OfflineBanner, SkeletonRows } from "./state-views";
 import { TabButtons } from "./tab-buttons";
-type LadderType = "players" | "clubs";
-
-interface LadderRow {
-  rank: number;
-  tag: string;
-  name: string;
-  trophies: number;
-  clubName: string | null;
-  memberCount: number | null;
-}
-
-interface LadderPayload {
-  type: LadderType;
-  country?: string;
-  updatedAt: number;
-  rows: LadderRow[];
-}
 
 const TYPES: Array<{ value: LadderType; label: "ladder.type.players" | "ladder.type.clubs" }> = [
   { value: "players", label: "ladder.type.players" },
@@ -47,14 +32,15 @@ export function LadderScreen() {
 
   useEffect(() => {
     const saved = readPref(COUNTRY_KEY);
-    const next = saved && REGION_CODES.includes(saved) ? saved : defaultLadderCountry(navigator.language);
+    const next =
+      saved && REGION_CODES.includes(saved) ? saved : defaultLadderCountry(navigator.language);
     writePref(COUNTRY_KEY, next);
     setCountry(next);
   }, []);
 
   const query = useQuery({
     queryKey: ["ladder", type, country],
-    queryFn: () => apiGet<LadderPayload>(`/ladder?type=${type}&country=${country}`),
+    queryFn: () => loadLadder(type, country ?? "global"),
     enabled: country !== null,
     refetchInterval: 300_000,
   });
@@ -82,7 +68,9 @@ export function LadderScreen() {
       />
 
       <label className="flex items-center gap-2 rounded-xl bg-surface px-3 py-2">
-        <span className="shrink-0 text-xs uppercase tracking-wider text-subtle">{t("ladder.region")}</span>
+        <span className="shrink-0 text-xs uppercase tracking-wider text-subtle">
+          {t("ladder.region")}
+        </span>
         {country ? (
           <select
             value={country}
@@ -121,7 +109,9 @@ export function LadderScreen() {
                   {type === "players" ? t("ladder.topPlayers") : t("ladder.topClubs")}
                   <span className="ml-2 text-sm text-subtle">{region}</span>
                 </h2>
-                <span className="text-xs text-subtle">{t("ladder.listed", { count: rows.length })}</span>
+                <span className="text-xs text-subtle">
+                  {t("ladder.listed", { count: rows.length })}
+                </span>
               </div>
               <ul className="flex flex-col gap-1.5">
                 {rows.map((row) => (
@@ -143,6 +133,7 @@ export function LadderScreen() {
 
 function LadderRowItem({ row, type }: { row: LadderRow; type: LadderType }) {
   const t = useT();
+  const ours = type === "clubs" && bareTag(row.tag) === CLUB_TAG;
   const secondary =
     type === "clubs"
       ? row.memberCount != null
@@ -151,10 +142,24 @@ function LadderRowItem({ row, type }: { row: LadderRow; type: LadderType }) {
       : (row.clubName ?? t("ladder.noClub"));
 
   return (
-    <li className="flex min-h-14 items-center gap-3 rounded-xl bg-surface px-3 py-2">
-      <span className="w-5 shrink-0 text-center font-mono text-xs tabular text-subtle">{row.rank || "–"}</span>
+    <li
+      className={cn(
+        "flex min-h-14 items-center gap-3 rounded-xl border-l-[3px] px-3 py-2",
+        ours ? "border-l-gold bg-gold/[0.07]" : "border-l-transparent bg-surface",
+      )}
+    >
+      <span className="w-5 shrink-0 text-center font-mono text-xs tabular text-subtle">
+        {row.rank || "–"}
+      </span>
       <div className="min-w-0 flex-1">
-        <p className="truncate font-medium">{row.name || `#${row.tag}`}</p>
+        <p className="truncate font-medium">
+          {row.name || `#${row.tag}`}
+          {ours ? (
+            <span className="ml-2 rounded bg-gold/15 px-1.5 py-0.5 align-middle text-[10px] font-normal text-gold">
+              {t("ladder.ourClub")}
+            </span>
+          ) : null}
+        </p>
         <p className="truncate text-xs text-subtle">{secondary}</p>
       </div>
       <p className="shrink-0 font-mono text-sm tabular text-gold">{formatTrophies(row.trophies)}</p>
