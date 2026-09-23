@@ -82,6 +82,22 @@ Verified: `npm run typecheck` clean; `npm test` 208 script + **77** TypeScript t
 
 **Load profile, measured:** opening the club tab now asks for the roster, 28 profiles and 28 battle logs (batches of six, the same loaders Stats and a map's page already use, cached 5-10 minutes). That is the same order of magnitude as opening Stats once, and the Worker's per-IP limit is 90 requests a minute.
 
+## The club tab leads with its roster, its Poland standing, and its own row in the ladder (23 Sep 2026)
+
+Four follow-ups on the same screens.
+
+**The leadership colours rotate.** The president now wears the senior's green (`win`), a vice president the president's cyan (`gold`), and a senior the vice president's blue (`ranked`) — same treatment, just reassigned. Measured in a browser: `borderLeftColor` `rgb(110,207,151)` on the president's row, `rgb(46,232,255)` on a vice president's, `rgb(91,192,222)` on a senior's, transparent on a member's.
+
+**The roster is back at the top**, right under the club's own card with its search box, and the Ranked board and the battle feed follow it. The order is now card → search → Members → Ranked → Latest club battles → Joined/left. `sortMembers` in `src/lib/club/format.ts` sorts leadership-first for the roster the loader hands out; the club screen re-sorts its own copy by trophies, which is what the previous round asked for.
+
+**The club card says where the club stands in Poland.** `GET /ladder?type=clubs&country=pl` (the same table the Ladder tab shows, the same query key, so either screen warms the other) is searched for our bare tag: "Poland: #102 among clubs" with 3,532,929 trophies, verified against the ladder row. Outside the top 200, a failed read and a read in flight each say so — no invented place.
+
+**Our club is highlighted in the ladder.** On the Ladder tab's club table the row whose tag is ours gets the gold edge, the tint and an "our club" chip; the match is on the bare tag, so a same-named club in another region's list cannot be mistaken for it.
+
+The ladder payload and loader moved to `src/lib/ladder/rows.ts` because two screens now read that contract; the Ladder screen imports it instead of declaring its own copy.
+
+Verified: `npm run typecheck` clean, 208 script + 77 TypeScript tests pass, `npm run build:pages` prerenders 16 pages, eslint clean on the touched files; browser checks at 390x844 on the dev server (all four behaviours above, measured), then both hosts redeployed.
+
 ## History
 
 ### Original handoff (22 Sep 2026): the published site did not load club or meta
@@ -192,7 +208,7 @@ Unofficial companion for Brawl Stars club **'N3X**, tag `#2JYGUQ2P8`. Not affili
 
 | Tab | Route | Job |
 |---|---|---|
-| Club | `/` | The **Ranked board** (every member's tier and Elo from their own profile, six at a time, and it starts with the tab — its header counts the profiles in as they land) and **Latest club battles** (the newest 25 competitive battles across the members' logs), then the roster — **sorted by trophies descending** (ties by name), so the number beside a member is the rank it looks like, with the leadership in its own quiet colours (gold for the president, blue for a vice president, green for a senior: a 3px left edge and a 7% tint on the row, plus the role word) — and the join/leave log. Tap a member (`/m/$tag`) for trophies, Ranked ELO, top brawlers, recent battles. |
+| Club | `/` | The **Ranked board** (every member's tier and Elo from their own profile, six at a time, and it starts with the tab — its header counts the profiles in as they land) and **Latest club battles** (the newest 25 competitive battles across the members' logs), then the roster — **sorted by trophies descending** (ties by name), so the number beside a member is the rank it looks like, with the leadership in its own quiet colours (green for the president, cyan for a vice president, blue for a senior: a 3px left edge and a 7% tint on the row, plus the role word) — and the join/leave log. The club's own card also carries its place in Poland's club table. Tap a member (`/m/$tag`) for trophies, Ranked ELO, top brawlers, recent battles. |
 | Stats | `/stats` | What the club plays: brawlers, modes and maps from the members' own battle logs, with queue (All/Ladder/Ranked) and range filters. No Elo here on purpose — Ranked standings are the club tab's board, and the API publishes no per-battle Elo delta. |
 | Meta | `/meta` | Ladder vs Ranked, kept separate. Ranked filters are league floors (Gold+ … Masters+), **not** brawler trophies. |
 | Maps | `/maps`, `/maps/$map` | The live event rotation; a card goes straight to that map's own page: its picture whole (690x1050, tap for full screen), the publisher's sample size and date, its four lists (best picks, winners, most used, not recommended) and its table **in the publisher's own order** — that map's ranking — with the overall tier as a badge per row, then our club's own battles there. No club rate and no queue tabs. |
