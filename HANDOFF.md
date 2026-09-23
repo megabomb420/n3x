@@ -205,7 +205,7 @@ The map as of the rewrite (during the BTN era this table named `src/lib/http/out
 - PGLite in the **built** Vercel preview crashes looking for `pglite.data`. `persistAndDiff` skips the DB when `PROD && !DATABASE_URL`. Real Neon (`DATABASE_URL` on deploy) is the join/leave store. Dev PGLite is fine.
 - `npm run dev` only, never raw `vite`. `startup.sh` must stay.
 
-## Suggested next step
+## Suggested next step (Grok era — superseded; see "How to verify" below)
 
 1. Open https://n3x.grok.me/ and check whether `/btn-src/club/2JYGUQ2P8` returns the vike HTML or another 403. That single request tells you if the edge proxy works.
 2. If 200 and the body contains `vike_pageContext`, the client path in `btnGetHtml` should already populate the club once this commit is what is deployed. Then check `POST /btn-src/api/trpc/auth.getToken` with `{"json":null}` for meta.
@@ -215,6 +215,30 @@ The map as of the rewrite (during the BTN era this table named `src/lib/http/out
 4. Re-test the public site, not only the preview. Preview success does not mean the publish works.
 
 ## How to verify
+
+Fast, from the repository root:
+
+```sh
+npm run typecheck                                   # tsc --noEmit
+npm test                                            # 61 TS tests pass; 18 sandbox tests in scripts/** fail on this machine
+curl -s https://n3x-api.whip-blanket.workers.dev/health   # {"ok":true,"key":true}
+curl -s "https://n3x-api.whip-blanket.workers.dev/creators/bobby?x=$RANDOM" | head -c 200   # entries, no error
+```
+
+Then in a browser, on **both** hosts (`https://n3x-dk5.pages.dev` and `https://megabomb420.github.io/n3x/`):
+
+- Club shows 28 members and the trophy total; search filters them; a member page shows trophies, a Ranked Elo chip, the brawler count and recent battles.
+- Stats shows the club's own battle window with sample sizes and the "small sample" badges, and no invented global rates.
+- Meta shows seven channel cards with a thumbnail, a kind badge and recent uploads; a throttled channel says "showing the last reading from …" rather than going empty. Zero console errors.
+- Ladder shows 200 leaderboard rows with markup stripped; Maps shows the live rotation with times.
+- A deep link (`/m/2JYGUQ2P8`) lands on the host's 404 fallback and boots the router.
+
+Deploying after a change: `npm run build` then
+`npx wrangler pages deploy .vercel/output/static --project-name=n3x --branch=main --commit-dirty=true`
+for Cloudflare Pages; GitHub Pages follows from the push via `.github/workflows/pages.yml`.
+Worker changes: `npx wrangler deploy --config worker/wrangler.jsonc`.
+
+### Grok-era verification (superseded)
 
 Preview: club home shows members (about 28), search filters them, a member page shows trophies and a Ranked ELO number, Meta shows Ladder rows and a Ranked tab with ELO chips, console has no uncaught errors.
 
