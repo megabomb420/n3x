@@ -729,7 +729,11 @@ export function parseBrawlMetricsTierList(html) {
       return match ? match[1] : "";
     };
     const tier = (/class="tier-badge[^"]*"[^>]*>([^<]+)/i.exec(chunk)?.[1] ?? "").trim();
-    const name = (/class="tier-table-brawler"[\s\S]*?<\/span>([^<]+)/i.exec(chunk)?.[1] ?? "")
+    const name = (
+      /class="tier-table-name"[^>]*>([^<]+)/i.exec(chunk)?.[1] ??
+      /class="tier-table-brawler"[\s\S]*?<\/span>([^<]+)/i.exec(chunk)?.[1] ??
+      ""
+    )
       .replace(/\s+/g, " ")
       .trim();
     const winRate = Number(attr("winrate"));

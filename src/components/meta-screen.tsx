@@ -15,9 +15,15 @@ import { Portrait } from "./portrait";
 import { EmptyState, ErrorState, OfflineBanner, SkeletonRows } from "./state-views";
 import { TabButtons } from "./tab-buttons";
 
-const SCOPES: Array<{ id: TierScope; label: "meta.scope.overall" | "meta.scope.ranked" }> = [
+type MetaView = TierScope | "beginner";
+
+const SCOPES: Array<{
+  id: MetaView;
+  label: "meta.scope.overall" | "meta.scope.ranked" | "meta.scope.beginner";
+}> = [
   { id: "overall", label: "meta.scope.overall" },
   { id: "ranked", label: "meta.scope.ranked" },
+  { id: "beginner", label: "meta.scope.beginner" },
 ];
 
 const SCOPE_KEY = "n3x.meta.scope";
@@ -42,19 +48,21 @@ const TIER_COLOR: Record<string, string> = {
 export function MetaScreen() {
   const t = useT();
   const online = useOnline();
-  const [scope, setScope] = useState<TierScope | null>(null);
+  const [scope, setScope] = useState<MetaView | null>(null);
   const [selected, setSelected] = useState<string | null>(null);
 
   useEffect(() => {
     const saved = readPref(SCOPE_KEY);
-    const next: TierScope = saved === "ranked" ? "ranked" : "overall";
+    const next: MetaView =
+      saved === "beginner" ? "beginner" : saved === "ranked" ? "ranked" : "overall";
     writePref(SCOPE_KEY, next);
     setScope(next);
   }, []);
 
+  const sourceScope: TierScope = scope === "ranked" ? "ranked" : "overall";
   const tier = useQuery({
-    queryKey: ["tier-list", scope],
-    queryFn: () => loadTierList(scope ?? "overall"),
+    queryKey: ["tier-list", sourceScope],
+    queryFn: () => loadTierList(sourceScope),
     enabled: scope !== null,
     refetchInterval: 900_000,
   });
@@ -67,7 +75,7 @@ export function MetaScreen() {
   const groups = useMemo(() => groupTiers(tier.data?.rows ?? []), [tier.data]);
   const picked = tier.data?.rows.find((row) => row.name === selected) ?? null;
 
-  function chooseScope(next: TierScope) {
+  function chooseScope(next: MetaView) {
     setScope(next);
     setSelected(null);
     writePref(SCOPE_KEY, next);
@@ -88,6 +96,30 @@ export function MetaScreen() {
         <div className="h-10 animate-pulse rounded-lg bg-surface-2" />
       )}
 
+      <button
+        type="button"
+        disabled={tier.isFetching}
+        onClick={() => {
+          void loadTierList(sourceScope, true)
+            .then(() => tier.refetch())
+            .catch(() => tier.refetch());
+        }}
+        className="min-h-11 rounded-xl bg-surface px-3 text-sm disabled:opacity-50"
+      >
+        {t("meta.refresh")}
+      </button>
+      {tier.data ? (
+        <p role="status" className="text-xs text-muted">
+          {tier.data.stale || Date.now() - tier.data.updatedAt > 3_600_000 ? t("meta.oldData") : ""}
+          {t("meta.readAt", { when: new Date(tier.data.updatedAt).toLocaleString() })}{" "}
+          <a className="underline" href={tier.data.sourceUrl} target="_blank" rel="noreferrer">
+            {tier.data.source}
+          </a>
+        </p>
+      ) : null}
+      {scope === "beginner" ? (
+        <BeginnerGuide rows={tier.data?.rows ?? []} catalog={catalog} />
+      ) : null}
       {scope && tier.isLoading ? <SkeletonRows count={6} /> : null}
       {tier.isError && !tier.data ? (
         <ErrorState
@@ -101,13 +133,17 @@ export function MetaScreen() {
         <EmptyState title={t("meta.empty.title")} body={t("meta.empty.body")} />
       ) : null}
 
-      {tier.data && groups.length > 0 ? (
+      {scope !== "beginner" && tier.data && groups.length > 0 ? (
         <section className="overflow-hidden rounded-2xl bg-surface" aria-label={t("nav.meta")}>
           <header className="flex items-baseline justify-between gap-2 px-3 pt-3">
             <h2 className="font-display text-lg tracking-wide">
-              {t("meta.tierList", { scope: t(scope === "ranked" ? "meta.scope.ranked" : "meta.scope.overall") })}
+              {t("meta.tierList", {
+                scope: t(scope === "ranked" ? "meta.scope.ranked" : "meta.scope.overall"),
+              })}
             </h2>
-            <span className="text-[11px] text-subtle">{t("meta.brawlersCount", { count: tier.data.rows.length })}</span>
+            <span className="text-[11px] text-subtle">
+              {t("meta.brawlersCount", { count: tier.data.rows.length })}
+            </span>
           </header>
           <ul className="mt-2 flex flex-col">
             {groups.map((group) => (
@@ -126,7 +162,9 @@ export function MetaScreen() {
                       row={row}
                       catalog={catalog}
                       pressed={selected === row.name}
-                      onPick={() => setSelected((current) => (current === row.name ? null : row.name))}
+                      onPick={() =>
+                        setSelected((current) => (current === row.name ? null : row.name))
+                      }
                     />
                   ))}
                 </div>
@@ -136,7 +174,10 @@ export function MetaScreen() {
           {picked ? <TierDetail row={picked} catalog={catalog} /> : null}
           <p className="px-3 py-2 text-[11px] leading-relaxed text-subtle">
             {tier.data.stale ? t("meta.noteStale") : ""}
-            {t("meta.note", { source: tier.data.source, when: formatRelative(tier.data.updatedAt) })}
+            {t("meta.note", {
+              source: tier.data.source,
+              when: formatRelative(tier.data.updatedAt),
+            })}
           </p>
         </section>
       ) : null}
@@ -183,14 +224,18 @@ function TierDetail({ row, catalog }: { row: TierRow; catalog: Catalog | null })
       </div>
       <div className="text-right">
         <p className="font-mono text-sm tabular text-gold">{row.winRate.toFixed(1)}%</p>
-        <p className="text-[10px] text-subtle">{row.useRate == null ? "—" : `${row.useRate.toFixed(2)}% use`}</p>
+        <p className="text-[10px] text-subtle">
+          {row.useRate == null ? "—" : `${row.useRate.toFixed(2)}% use`}
+        </p>
       </div>
     </div>
   );
 }
 
 function videoThumb(video: { videoId: string; thumbnailUrl: string }): string {
-  return video.videoId ? `https://i.ytimg.com/vi/${video.videoId}/hqdefault.jpg` : video.thumbnailUrl;
+  return video.videoId
+    ? `https://i.ytimg.com/vi/${video.videoId}/hqdefault.jpg`
+    : video.thumbnailUrl;
 }
 
 function CreatorLinks({ channels, loading }: { channels: CreatorFeed[]; loading: boolean }) {
@@ -204,7 +249,10 @@ function CreatorLinks({ channels, loading }: { channels: CreatorFeed[]; loading:
         {channels.map((channel) => {
           const lead = pickLeadVideo(channel.entries, "tierLists");
           return (
-            <li key={channel.id} className="overflow-hidden rounded-2xl bg-surface shadow-[var(--shadow-border)]">
+            <li
+              key={channel.id}
+              className="overflow-hidden rounded-2xl bg-surface shadow-[var(--shadow-border)]"
+            >
               {lead ? (
                 <a href={lead.watchUrl} target="_blank" rel="noreferrer" className="block">
                   <img
@@ -219,11 +267,18 @@ function CreatorLinks({ channels, loading }: { channels: CreatorFeed[]; loading:
                       {channel.name}
                       <span className="ml-1.5 text-xs text-subtle">{channel.handle}</span>
                     </p>
-                    <p className="mt-0.5 line-clamp-2 text-[12px] leading-snug text-muted">{lead.title}</p>
+                    <p className="mt-0.5 line-clamp-2 text-[12px] leading-snug text-muted">
+                      {lead.title}
+                    </p>
                   </div>
                 </a>
               ) : (
-                <a href={channel.channelUrl} target="_blank" rel="noreferrer" className="flex items-center gap-3 px-3 py-3">
+                <a
+                  href={channel.channelUrl}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="flex items-center gap-3 px-3 py-3"
+                >
                   <span className="flex size-12 shrink-0 items-center justify-center rounded-xl bg-surface-2 text-subtle">
                     <ExternalLink className="size-4" />
                   </span>
@@ -239,6 +294,51 @@ function CreatorLinks({ channels, loading }: { channels: CreatorFeed[]; loading:
           );
         })}
       </ul>
+    </section>
+  );
+}
+
+const BEGINNER_PICKS = [
+  { name: "Shelly", tip: "meta.tip.shelly" },
+  { name: "Nita", tip: "meta.tip.nita" },
+  { name: "Jessie", tip: "meta.tip.jessie" },
+  { name: "Poco", tip: "meta.tip.poco" },
+  { name: "Rosa", tip: "meta.tip.rosa" },
+] as const;
+
+function BeginnerGuide({ rows, catalog }: { rows: TierRow[]; catalog: Catalog | null }) {
+  const t = useT();
+  // Simple kits are editorial guidance; tiers remain the publisher's overall tiers.
+  const picks = groupTiers(rows)
+    .flatMap((group) => group.rows)
+    .flatMap((row) => {
+      const pick = BEGINNER_PICKS.find((p) => p.name.toLowerCase() === row.name.toLowerCase());
+      return pick ? [{ ...pick, row }] : [];
+    });
+  return (
+    <section className="rounded-2xl bg-surface p-3">
+      <h2 className="font-display text-xl">{t("meta.beginner.title")}</h2>
+      <p className="mt-2 text-xs leading-relaxed text-muted">{t("meta.beginner.note")}</p>
+      <ul className="mt-3 flex flex-col gap-2">
+        {picks.map((pick) => (
+          <li key={pick.name} className="flex gap-3 rounded-xl bg-surface-2 p-3">
+            <Portrait
+              catalog={findBrawler(catalog, pick.row.name)}
+              cubeName={pick.row.name}
+              size={40}
+              decorative
+            />
+            <div>
+              <p className="text-sm font-medium">
+                {displayBrawlerName(pick.row.name)} ·{" "}
+                {t("meta.overallTier", { tier: pick.row.tier })}
+              </p>
+              <p className="mt-1 text-xs leading-relaxed text-muted">{t(pick.tip)}</p>
+            </div>
+          </li>
+        ))}
+      </ul>
+      <p className="mt-3 text-xs leading-relaxed text-subtle">{t("meta.beginner.rule")}</p>
     </section>
   );
 }

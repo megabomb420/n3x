@@ -425,3 +425,13 @@ test("tags and paths are normalised before they reach the API", () => {
   assert.equal(bareTag("#2jyguq2p8"), "2JYGUQ2P8");
   assert.equal(tagPath("/players", "#2JYGUQ2P8"), "/players/%232JYGUQ2P8");
 });
+
+test("tier list reads the publisher's nested name span without swallowing the class", () => {
+  const rows = parseBrawlMetricsTierList(
+    `<tr data-class="Controller" data-winrate="65.9" data-userate="0.5"><td><a class="tier-table-brawler"><span class="tier-table-avatar"><img /></span><span class="tier-table-name">Cosmo<span class="tier-table-class">Controller</span></span></a></td><td><span class="tier-badge tier-splus">S+</span></td></tr>`,
+  );
+  assert.equal(rows.length, 1);
+  assert.equal(rows[0].name, "Cosmo");
+  assert.equal(rows[0].tier, "S+");
+  assert.equal(rows[0].winRate, 65.9);
+});
