@@ -6,6 +6,7 @@
  * costs nothing. Member and time-range choices are applied later, in
  * `aggregateBattles`, so switching them does not refetch.
  */
+import { mapConcurrent } from "./concurrency";
 import { apiGet } from "@/lib/api/client";
 import { cacheGet, cacheSet } from "@/lib/meta/cache";
 import { loadClubHome, loadClubPlayer } from "./queries";
@@ -84,38 +85,33 @@ export async function loadMemberRanked(
 ): Promise<MemberRanked[]> {
   const out: MemberRanked[] = tags.map((tag) => ({ tag, elo: null, rankName: null }));
 
-  for (let index = 0; index < tags.length; index += RANKED_CONCURRENCY) {
-    const slice = tags.slice(index, index + RANKED_CONCURRENCY);
-    const results = await Promise.all(
-      slice.map(async (tag, offset) => {
-        const key = `ranked:${CACHE_TAG}:${tag}`;
-        const hit = cacheGet<MemberRanked>(key);
-        if (hit && Date.now() - hit.savedAt < RANKED_TTL_MS)
-          return { at: index + offset, value: hit.value };
-        try {
-          const profile = await loadClubPlayer(tag);
-          const value: MemberRanked = {
-            tag,
-            elo: profile.rankedElo,
-            rankName: profile.rankedRankName,
-          };
-          cacheSet(key, value);
-          return { at: index + offset, value };
-        } catch {
-          const value: MemberRanked = {
-            tag,
-            elo: hit?.value.elo ?? null,
-            rankName: hit?.value.rankName ?? null,
-          };
-          return { at: index + offset, value };
-        }
-      }),
-    );
-    for (const result of results) out[result.at] = result.value;
-    // A profile takes a second or two, so the board fills in as batches land
-    // instead of showing skeletons for the whole run.
+  await mapConcurrent(tags, RANKED_CONCURRENCY, async (tag, index) => {
+    const result = await (async () => {
+      const key = `ranked:${CACHE_TAG}:${tag}`;
+      const hit = cacheGet<MemberRanked>(key);
+      if (hit && Date.now() - hit.savedAt < RANKED_TTL_MS)
+        return { at: index, value: hit.value };
+      try {
+        const profile = await loadClubPlayer(tag);
+        const value: MemberRanked = {
+          tag,
+          elo: profile.rankedElo,
+          rankName: profile.rankedRankName,
+        };
+        cacheSet(key, value);
+        return { at: index, value };
+      } catch {
+        const value: MemberRanked = {
+          tag,
+          elo: hit?.value.elo ?? null,
+          rankName: hit?.value.rankName ?? null,
+        };
+        return { at: index, value };
+      }
+    })();
+    out[result.at] = result.value;
     onProgress?.([...out]);
-  }
+  });
   return out;
 }
 
@@ -136,20 +132,16 @@ export async function loadClubLogs(): Promise<ClubLogs> {
   const logs: Array<{ tag: string; battles: PlayerBattle[] }> = [];
   let unavailable = 0;
 
-  for (let index = 0; index < members.length; index += LOG_CONCURRENCY) {
-    const slice = await Promise.all(
-      members.slice(index, index + LOG_CONCURRENCY).map(async (member) => {
-        try {
-          return { tag: member.tag, battles: await loadMemberBattles(member.tag) };
-        } catch {
-          return null;
-        }
-      }),
-    );
-    for (const log of slice) {
-      if (log) logs.push(log);
-      else unavailable += 1;
+  const results = await mapConcurrent(members, LOG_CONCURRENCY, async (member) => {
+    try {
+      return { tag: member.tag, battles: await loadMemberBattles(member.tag) };
+    } catch {
+      return null;
     }
+  });
+  for (const log of results) {
+    if (log) logs.push(log);
+    else unavailable += 1;
   }
   if (logs.length === 0) throw new Error("No member battle logs could be read");
 
