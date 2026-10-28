@@ -88,3 +88,24 @@ test("redirected network responses lose their redirected flag before reaching iO
   assert.equal(response.redirected, false);
   assert.equal(await response.text(), SETTINGS_HTML);
 });
+
+test("an empty 404 cannot replace the cached Settings document", async () => {
+  const worker = makeWorker(() => new Response("", { status: 404 }));
+  await worker.cache.put(SETTINGS, new Response(SETTINGS_HTML));
+  assert.equal(await (await worker.navigate(SETTINGS)).text(), SETTINGS_HTML);
+  assert.equal(await (await worker.cache.match(SETTINGS)).text(), SETTINGS_HTML);
+});
+
+test("a previously cached empty document falls back to the working shell", async () => {
+  const worker = makeWorker(() => new Response("", { status: 404 }));
+  await worker.cache.put(SETTINGS, new Response("", { status: 404 }));
+  await worker.cache.put(ROOT, new Response("<h1>Club</h1>"));
+  assert.equal(await (await worker.navigate(SETTINGS)).text(), "<h1>Club</h1>");
+});
+
+test("a nonempty static-host 404 document is still used", async () => {
+  const worker = makeWorker(() => new Response(SETTINGS_HTML, { status: 404 }));
+  const response = await worker.navigate(SETTINGS);
+  assert.equal(await response.text(), SETTINGS_HTML);
+  assert.equal(await (await worker.cache.match(SETTINGS)).text(), SETTINGS_HTML);
+});

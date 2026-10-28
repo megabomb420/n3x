@@ -82,7 +82,11 @@ self.addEventListener("fetch", (event) => {
         // is the build the host serves right now, so it is used and cached.
         // Treating it as a failed fetch is what used to hand back the cached
         // shell of an older build, whose chunks the host no longer has.
-        if (res && (res.ok || res.status === 404)) {
+        // A missing deployment can return an empty 404. It is not an SPA
+        // fallback and must never replace a working cached document.
+        const usable = res && (res.ok || res.status === 404) &&
+          (await res.clone().text()).trim().length > 0;
+        if (usable) {
           const copy = res.clone();
           // Keep the exact document for an offline revisit without replacing
           // the root shell with the last route that happened to load.
@@ -98,7 +102,11 @@ self.addEventListener("fetch", (event) => {
         /* offline or a blocked navigation — use an already cached document */
       }
       const cache = await caches.open(SHELL);
-      return (await cache.match(req)) || (await cache.match(shellUrl())) || fetch(req);
+      for (const key of [req, shellUrl()]) {
+        const cached = await cache.match(key);
+        if (cached && (await cached.clone().text()).trim()) return cached;
+      }
+      return fetch(req);
     })(),
   );
 });
