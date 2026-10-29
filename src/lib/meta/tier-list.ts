@@ -24,11 +24,14 @@ export interface TierList {
 const CACHE_TTL_MS = 15 * 60_000;
 
 /** One scope's published tier list. A failed read is not cached. */
-export async function loadTierList(scope: TierScope): Promise<TierList> {
+export async function loadTierList(scope: TierScope, force = false): Promise<TierList> {
   const key = `tier-list:v1:${scope}`;
   const hit = cacheGet<TierList>(key);
-  if (hit && Date.now() - hit.savedAt < CACHE_TTL_MS && hit.value.rows.length > 0) return hit.value;
-  const list = await apiGet<TierList>(`/tier-list?scope=${scope}`);
+  if (!force && hit && Date.now() - hit.savedAt < CACHE_TTL_MS && hit.value.rows.length > 0)
+    return hit.value;
+  const list = await apiGet<TierList>(
+    `/tier-list?scope=${scope}${force ? `&refresh=${Date.now()}` : ""}`,
+  );
   if (list.rows.length > 0) cacheSet(key, list);
   return list;
 }

@@ -137,6 +137,27 @@ export const STRINGS = {
       "Counting competitive battles only — friendlies and event modes stay out. The official log keeps about the last 25 games per player, so 30 days often matches All logs. A row with fewer than {low} picks is a small sample, not a ranking. The right-hand number is net trophies from ladder battles — Ranked battles publish no trophy and no Elo delta, so that column is empty there. Current Ranked Elo and tier come from the player's own profile (Members view).",
 
     "meta.scope.overall": "Overall",
+    "meta.scope.beginner": "Low trophies",
+    "meta.refresh": "Refresh meta",
+    "meta.oldData": "Older reading — do not assume this reflects the latest balance. ",
+    "meta.readAt": "Source last read: {when}.",
+    "meta.overallTier": "overall tier {tier}",
+    "meta.beginner.title": "Simple picks for learning",
+    "meta.beginner.note":
+      "A practical shortlist for learning at low brawler trophies. These tips are editorial guidance, not measured low-trophy win rates. The badges and order use the available overall tier list; the source does not publish a trophy bracket.",
+    "meta.beginner.rule":
+      "Choose for the map and mode. Keep your distance from counters, fight with teammates, and practise one or two brawlers before spending resources. A strong overall tier does not guarantee a win at low trophies.",
+    "meta.tip.shelly":
+      "Use cover on close-range maps. Save your Super for enemies who push you; avoid chasing long-range opponents across open ground.",
+    "meta.tip.nita":
+      "Use walls to approach. Place the bear to pressure an enemy while you attack from another angle; do not send it into three opponents alone.",
+    "meta.tip.jessie":
+      "Place the turret behind cover to hold space. Aim at grouped enemies, but keep the turret away from easy splash damage.",
+    "meta.tip.poco":
+      "Stay close enough to heal teammates, but spread out against splash damage. Your value comes from keeping the team alive, not duelling tanks alone.",
+    "meta.tip.rosa":
+      "Use bushes and cover to close distance. Activate the shield before taking heavy damage; on open maps a ranged pick is usually easier.",
+
     "meta.scope.ranked": "Ranked",
     "meta.tierList": "{scope} tier list",
     "meta.brawlersCount": "{count} brawlers",
@@ -147,7 +168,7 @@ export const STRINGS = {
     "meta.empty.title": "No tiers in this list",
     "meta.empty.body": "The source answered, but it had no brawler rows to show.",
     "meta.note":
-      "Re-read from {source} about every 15 minutes, so a balance change shows up without an app update. Tiers are percentiles of win rate and use rate, not a creator's opinion. Updated {when}.",
+      "Read from {source}. Last successful read {when}; this is not the publisher's balance-update date. Tiers reflect the publisher's combined win/use-rate ranking across its population, without a trophy bracket.",
     "meta.noteStale": "Showing the last reading — the source did not answer this time. ",
 
     "ladder.type.players": "Players",
@@ -387,6 +408,27 @@ export const STRINGS = {
       "Liczymy tylko bitwy rankingowe — towarzyskie i tryby wydarzeń zostają poza. Oficjalny dziennik trzyma około 25 ostatnich gier na gracza, więc 30 dni często równa się całym dziennikom. Wiersz z mniej niż {low} wyborami to mała próba, nie ranking. Liczba po prawej to bilans pucharów z bitew pucharowych — bitwy rankingowe nie publikują ani pucharów, ani delty Elo, więc w tej kolejce kolumna jest pusta. Aktualne Elo w Ranked i tier pochodzą z profilu gracza (widok Członkowie).",
 
     "meta.scope.overall": "Ogólna",
+    "meta.scope.beginner": "Niskie puchary",
+    "meta.refresh": "Odśwież metę",
+    "meta.oldData": "Starszy odczyt — może nie uwzględniać ostatniego balansu. ",
+    "meta.readAt": "Ostatni odczyt źródła: {when}.",
+    "meta.overallTier": "tier ogólny {tier}",
+    "meta.beginner.title": "Proste postacie do nauki",
+    "meta.beginner.note":
+      "Praktyczna lista do nauki przy niskich pucharach zadymiarza. Porady są redakcyjne, a nie zmierzonym win rate na niskich pucharach. Znaczki i kolejność pochodzą z dostępnej mety ogólnej; źródło nie publikuje podziału na puchary.",
+    "meta.beginner.rule":
+      "Dobieraj postać do mapy i trybu. Unikaj kontr, walcz z drużyną i opanuj jedną lub dwie postacie przed wydawaniem zasobów. Wysoki tier ogólny nie gwarantuje wygranej na niskich pucharach.",
+    "meta.tip.shelly":
+      "Korzystaj z osłon na mapach do walki z bliska. Zachowaj Super na atakującego przeciwnika; nie ścigaj strzelców po otwartym terenie.",
+    "meta.tip.nita":
+      "Podchodź pod osłoną ścian. Niedźwiedziem wywieraj presję, a sam atakuj z innej strony; nie wysyłaj go samotnie na trzech przeciwników.",
+    "meta.tip.jessie":
+      "Stawiaj wieżyczkę za osłoną, by kontrolować teren. Celuj w skupionych przeciwników i chroń wieżyczkę przed obrażeniami obszarowymi.",
+    "meta.tip.poco":
+      "Trzymaj się w zasięgu leczenia drużyny, ale unikaj skupiania się pod ataki obszarowe. Twoją siłą jest utrzymanie zespołu przy życiu, nie samotna walka z tankami.",
+    "meta.tip.rosa":
+      "Skracaj dystans krzakami i osłonami. Włączaj tarczę przed dużymi obrażeniami; na otwartych mapach łatwiej zacząć postacią dystansową.",
+
     "meta.scope.ranked": "Rankingowa",
     "meta.tierList": "Tabela tierów: {scope}",
     "meta.brawlersCount": "{count} zadymiarzy",
@@ -397,7 +439,7 @@ export const STRINGS = {
     "meta.empty.title": "Brak tierów w tej tabeli",
     "meta.empty.body": "Źródło odpowiedziało, ale nie miało wierszy do pokazania.",
     "meta.note":
-      "Odczyt z {source} mniej więcej co 15 minut, więc zmiana balansu pojawia się bez aktualizacji aplikacji. Tiery to percentyle skuteczności i popularności, nie opinia twórcy. Zaktualizowano {when}.",
+      "Źródło: {source}. Ostatni poprawny odczyt {when}; nie jest to data aktualizacji balansu przez wydawcę. Tiery to ranking łączący skuteczność i popularność w jego populacji, bez podziału na puchary.",
     "meta.noteStale": "Pokazujemy ostatni odczyt — źródło nie odpowiedziało tym razem. ",
 
     "ladder.type.players": "Gracze",
